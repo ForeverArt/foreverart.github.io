@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>lxm</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- <link href="images/favicon.ico" rel="icon" type="image/x-icon" /> -->
+    <!-- from vendors -->
+    <link rel="stylesheet" href="vendors/font-awesome/css/font-awesome.css">
+    <link rel="stylesheet" href="vendors/bootstrap-3.3.7-dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="vendors/Uikit/css/uikit.css">
+    <link rel="stylesheet" href="vendors/Uikit/css/uikit.almost-flat.css">
+    <link rel="stylesheet" href="vendors/Uikit/expand/uikit.docs.min.css">
+    <link rel="stylesheet" href="vendors/Uikit/expand/docs.css">
+    <!-- self -->
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/blog/blog.css">
+</head>
+<body>
+    <!-- nav -->
+    <nav class="uk-navbar" id="nav-header">
+        <ul class="uk-navbar-nav">
+            <li class="uk-parent uk-active" data-uk-dropdown="" aria-haspopup="true" aria-expanded="false">
+                <a href="blog">Blog</a>
+                <div class="uk-dropdown uk-dropdown-navbar uk-dropdown-top" style="top: -218px; left: 0px;">
+                    <ul class="uk-nav uk-nav-navbar">
+                        <li class="uk-nav-header">Original</li>
+                        <li><a href="#">Blogs</a></li>
+                        <li><a href="#">Drafts</a></li>
+                        <li class="uk-nav-header">Collect</li>
+                        <li><a href="#">Pages</a></li>
+                        <li><a href="#">Notes</a></li>
+                        <li class="uk-nav-divider"></li>
+                        <li><a href="#"><b>Control Mode</b></a></li>
+                    </ul>
+                </div>
+            </li>
+        </ul>
+        <div class="uk-navbar-flip">
+            <ul class="uk-navbar-nav">
+                <li><a href="blog"><i class="uk-icon-github"></i> Github</a></li>
+                <li><a href="setting"><i class="uk-icon-cog"></i> Setting</a></li>
+            </ul>
+
+        </div>
+    </nav>
+    <!-- end nav -->
+    <div class="container bs-docs-container">
+        <div class="row" id="app" role="main">
+            <div class="col-md-11">
+                <Blogs></Blogs>
+            </div>
+            <div class="col-md-1" role="complementary">
+                ..
+            </div>
+        </div>
+    </div>
+</body>
+
+
+<!-- template -->
+<!-- blog -->
+<template id="blog_t">
+    <article class="uk-article">
+        <h1 class="uk-article-title">{{title}}</h1>
+        <p class="uk-article-meta">{{meta}}</p>
+        <p class="uk-article-lead">{{lead}}</p>
+        {{abstract}}
+        <hr class="uk-article-divider">
+        {{content}}
+    </article>
+</template>
+<!-- blogs -->
+<template id="blogs_t">
+    <div class="blogs">
+        <div v-for="blogItem in blogArray" class="blog shadow1">
+            <Blog></Blog>
+        </div>
+    </div>
+</template>
+
+<!-- from vendors -->
+<script type="text/javascript" src="vendors/jquery/jquery-3.2.1.min.js"></script>
+<script type="text/javascript" src="vendors/bootstrap-3.3.7-dist/js/bootstrap.min.js"></script>
+<script type="text/javascript" src="vendors/Uikit/js/uikit.js"></script>
+<script type="text/javascript" src="vendors/vue/vue.js"></script>
+<!-- main -->
+<script type="text/javascript" src="js/main.js"></script>
+</html>
