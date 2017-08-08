@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>lxm</title>
+    <title>ForeverArt.github.io</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="images/favicon.ico" rel="icon" type="image/x-icon" />
     <!-- from vendors -->
@@ -20,8 +20,8 @@
     <!-- nav -->
     <nav class="uk-navbar" id="nav-header">
         <ul class="uk-navbar-nav">
-            <li class="uk-parent uk-active" data-uk-dropdown="" aria-haspopup="true" aria-expanded="false">
-                <a href="blog">Blog</a>
+            <li class="uk-parent" data-uk-dropdown="" aria-haspopup="true" aria-expanded="false">
+                <a href="index.html">Blog</a>
                 <div class="uk-dropdown uk-dropdown-navbar uk-dropdown-top" style="top: -218px; left: 0px;">
                     <ul class="uk-nav uk-nav-navbar">
                         <li class="uk-nav-header">Original</li>
@@ -47,16 +47,31 @@
     <!-- end nav -->
     <div class="container bs-docs-container">
         <div class="row" id="app" role="main">
-            <div class="col-md-11">
-                <Blogs></Blogs>
+            <div v-if="!showBlogDetail" class="showBlogs">
+                <div class="col-md-9">
+                    <div class="blogs">
+                        <div v-for="(blogItem, index) in blogs"
+                        v-bind:item="blogItem"
+                        v-bind:index="index"
+                        v-bind:key="blogItem.number"
+                        class="blog shadow1"
+                        @click="chooseDetail(blogItem.number)">
+                            <blog :blog="blogItem"></blog>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3" role="complementary" class="blog_side_bar">
+                    内容待定
+                </div>
             </div>
-            <div class="col-md-1" role="complementary">
-                ..
+            <div v-if="showBlogDetail" class="showBlogDetail">
+                <div class="container">
+                    <blog :blog="currentBlog"><blog>
+                </div>
             </div>
         </div>
     </div>
 </body>
-
 
 <!-- template -->
 <!-- blog -->
@@ -64,19 +79,9 @@
     <article class="uk-article">
         <h1 class="uk-article-title">{{title}}</h1>
         <p class="uk-article-meta">{{meta}}</p>
-        <p class="uk-article-lead">{{lead}}</p>
-        {{abstract}}
         <hr class="uk-article-divider">
-        {{content}}
+        <div v-html="html_content"></div>
     </article>
-</template>
-<!-- blogs -->
-<template id="blogs_t">
-    <div class="blogs">
-        <div v-for="blogItem in blogArray" class="blog shadow1">
-            <Blog></Blog>
-        </div>
-    </div>
 </template>
 
 <!-- from vendors -->
@@ -84,6 +89,7 @@
 <script type="text/javascript" src="vendors/bootstrap-3.3.7-dist/js/bootstrap.min.js"></script>
 <script type="text/javascript" src="vendors/Uikit/js/uikit.js"></script>
 <script type="text/javascript" src="vendors/vue/vue.js"></script>
+<script src="vendors/markdown-browser-0.6.0-beta1/markdown.min.js" charset="utf-8"></script>
 <!-- main -->
 <script type="text/javascript" src="js/main.js"></script>
 </html>

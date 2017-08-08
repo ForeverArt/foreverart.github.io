@@ -2,3 +2,9 @@
 #nav-header {
     margin-bottom: 40px;
 }
+.blog {
+    cursor: pointer;
+}
+.blog_side_bar {
+    border: 1px solid grey;
+}

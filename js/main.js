@@ -1,54 +1,97 @@
-var Blog = Vue.component('Blog', {
+const IssueList = 'https://api.github.com/repos/ForeverArt/foreverart.github.io/issues'
+const IssueById = function (id) {
+    return IssueList + '/' + id
+}
+
+const _API = {
+    'IssueList': IssueList,
+    'IssueById': IssueById
+}
+
+let blog = Vue.component('blog', {
+    props: ['blog'],
     template: '#blog_t',
     data: function () {
         return {
+            reproduced: false,
+            // html content
+            html_content: '',
+            // meta
+            author: '',
             title: '',
-            meta: '',
-            lead: '',
-            abstract: '',
-            content: ''
+            createDateStr: '',
+            updateDateStr: ''
         }
     },
     created:function () {
-        this.title = '洛神赋'
-        this.meta = '由 曹植 撰写于 2012年12月12日 | 发表在 博客'
-        this.lead = '黄初三年，余朝京师，还济洛川。古人有言，斯水之神，名曰宓妃。感宋玉对楚王神女之事，遂作斯赋，其词曰：'
-        this.abstract = '黄初三年，余朝京师，还济洛川。古人有言，斯水之神，名曰宓妃。感宋玉对楚王神女之事，遂作斯赋，其词曰：'
-        this.content = '余从京域，言归东藩，背伊阙 ，越轘辕，经通谷，陵景山。\
-        日既西倾，车殆马烦。尔乃税驾乎蘅皋，秣驷乎芝田，容与乎阳林，流眄乎洛川。\
-        于是精移神骇，忽焉思散。俯则未察，仰以殊观。睹一丽人，于岩之畔。乃援御者\
-        而告之曰：“尔有觌于彼者乎？彼何人斯，若此之艳也！”御者对曰：“臣闻河洛之\
-        神，名曰宓妃。然则君王所见，无乃是乎？其状若何，臣愿闻之。”'
-    }
-})
-
-var Blogs = Vue.component('Blogs', {
-    // 选项
-    template: '#blogs_t',
-    component: {
-        'Blog': Blog
+        this.initialMeta(this.blog)
+        let content = this.blog.body
+        this.analyseContent(content)
     },
-    data: function () {
-        return {
-            blogArray: [0, 1, 2, 3, 4]
+    methods: {
+        dateFormat: function (value) {
+            let date = new Date(value)
+            return [date.getFullYear(), date.getMonth(), date.getDate()].join('-')
+        },
+        initialMeta: function (blog) {
+            this.title = blog.title
+            this.author = blog.user.login
+            this.createDateStr = this.dateFormat(blog.created_at)
+            this.updateDateStr = this.dateFormat(blog.updated_at)
+        },
+        analyseContent: function (content) {
+            this.html_content = markdown.toHTML(content)
         }
     },
+    computed: {
+        meta: function () {
+            return '由 ' + this.author + ' 撰写于 ' + this.createDateStr + '\t最后更新于 ' + this.updateDateStr
+        }
+    },
+    watch: {
+    },
 })
 
-var main = new Vue({
+let main = new Vue({
     el: '#app',
     components: {
         // <my-component> 将只在父模板可用
-        'Blogs': Blogs
+        'blog': blog
     },
     data: function () {
         return {
-            currentRoute: window.location.pathname,
-            blogArray: [0, 1, 2, 3, 4]
+            blogs: [],
+            currentBlog: {},
+            showBlogDetail: false
         }
     },
     created: function () {
         // `this` 指向 vm 实例
-        console.log(this.currentRoute)
+        this.getBlogs()
+    },
+    methods: {
+        chooseDetail: function (number) {
+            this.showBlogDetail = true
+            for (let i = 0; i < this.blogs.length; i++) {
+                if (this.blogs[i].number === number) {
+                    this.currentBlog = this.blogs[i]
+                    return ;
+                }
+            }
+            alert('404 Not Found.')
+        },
+        backToBlogs: function () {
+            this.showBlogDetail = false
+        },
+        getBlogs: function () {
+            let self = this
+            // self 指代this 否则由于闭包无法在下方匿名函数中使用
+            $.get(_API.IssueList, function (blogArray) {
+                if (blogArray) {
+                    // console.log(blogArray)
+                    self.blogs = blogArray
+                }
+            })
+        }
     }
 })
