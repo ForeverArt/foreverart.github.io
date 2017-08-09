@@ -15,7 +15,7 @@
     <!-- self -->
     <link rel="stylesheet" href="css/main.css">
     <!-- blog -->
-    <link rel="stylesheet" href="css/blog/blog.css">
+    <link rel="stylesheet" href="css/essay/essay.css">
 </head>
 <body>
     <!-- nav -->
@@ -31,52 +31,22 @@
                 <li><a href="https://github.com/ForeverArt/foreverart.github.io" target="_blank"><i class="uk-icon-github"></i> Github</a></li>
                 <li><a href="https://github.com/ForeverArt/foreverart.github.io/issues" target="_blank"><i class="uk-icon-cog"></i> Admin</a></li>
             </ul>
-
         </div>
     </nav>
     <!-- end nav -->
     <div class="container bs-docs-container">
-        <!-- index.html -->
-        <div class="row" id="app" role="main">
-            <div v-if="!showBlogDetail" class="showBlogs">
-                <div class="col-md-9">
-                    <div class="blogs">
-                        <div v-for="(blogItem, index) in blogs"
-                        v-bind:item="blogItem"
-                        v-bind:index="index"
-                        v-bind:key="blogItem.number"
-                        class="blog shadow1"
-                        @click="chooseDetail(blogItem.number)">
-                            <blog :blog="blogItem"></blog>
-                        </div>
-                    </div>
-                </div>
-                <div v-if="blogs.length" class="visible-md visible-lg col-md-3 shadow2" role="complementary" id="sidebar">
-                    <ul v-for="(blogItem, index) in blogs">
-                        <li><a @click="scrollTo('blog_' + blogItem.number)">{{blogItem.title}}</a></li>
-                    </ul>
-                </div>
-            </div>
-            <div v-if="showBlogDetail" class="showBlogDetail">
-                <div class="container">
-                    <blog :blog="currentBlog"><blog>
-                </div>
-            </div>
-        </div>
-        <!-- end index.html -->
+        所谓主题相同：
+        复用内容
+        配色
+        字体
     </div>
 </body>
 
 <!-- template -->
 <!-- index.html -->
 <!-- blog -->
-<template id="blog_t">
-    <article class="uk-article" :id="'blog_' + blog.number">
-        <h1 class="uk-article-title">{{title}}</h1>
-        <p class="uk-article-meta">{{meta}}</p>
-        <hr class="uk-article-divider">
-        <div v-html="html_content"></div>
-    </article>
+<template id="essay_t">
+
 </template>
 
 <!-- from vendors -->
@@ -86,5 +56,5 @@
 <script type="text/javascript" src="vendors/vue/vue.js"></script>
 <script src="vendors/markdown-browser-0.6.0-beta1/markdown.min.js" charset="utf-8"></script>
 <!-- index.html -->
-<script type="text/javascript" src="js/main.js"></script>
+<script type="text/javascript" src="js/essay.js"></script>
 </html>

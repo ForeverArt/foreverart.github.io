@@ -14,8 +14,8 @@
     <link rel="stylesheet" href="vendors/Uikit/expand/docs.css">
     <!-- self -->
     <link rel="stylesheet" href="css/main.css">
-    <!-- blog -->
-    <link rel="stylesheet" href="css/blog/blog.css">
+    <!-- page -->
+    <link rel="stylesheet" href="css/pages/pages.css">
 </head>
 <body>
     <!-- nav -->
@@ -36,45 +36,30 @@
     </nav>
     <!-- end nav -->
     <div class="container bs-docs-container">
-        <!-- index.html -->
+        <!-- pages.html -->
         <div class="row" id="app" role="main">
-            <div v-if="!showBlogDetail" class="showBlogs">
-                <div class="col-md-9">
-                    <div class="blogs">
-                        <div v-for="(blogItem, index) in blogs"
-                        v-bind:item="blogItem"
+            <div class="showpages">
+                <div class="col-md-12">
+                    <div class="pages">
+                        <div v-for="(pageItem, index) in pages"
+                        v-bind:item="pageItem"
                         v-bind:index="index"
-                        v-bind:key="blogItem.number"
-                        class="blog shadow1"
-                        @click="chooseDetail(blogItem.number)">
-                            <blog :blog="blogItem"></blog>
+                        v-bind:key="pageItem.number"
+                        class="page pageShadow">
+                            <page :page="pageItem"></page>
                         </div>
                     </div>
                 </div>
-                <div v-if="blogs.length" class="visible-md visible-lg col-md-3 shadow2" role="complementary" id="sidebar">
-                    <ul v-for="(blogItem, index) in blogs">
-                        <li><a @click="scrollTo('blog_' + blogItem.number)">{{blogItem.title}}</a></li>
-                    </ul>
-                </div>
-            </div>
-            <div v-if="showBlogDetail" class="showBlogDetail">
-                <div class="container">
-                    <blog :blog="currentBlog"><blog>
-                </div>
             </div>
         </div>
-        <!-- end index.html -->
+        <!-- end pages.html -->
     </div>
 </body>
 
 <!-- template -->
-<!-- index.html -->
-<!-- blog -->
-<template id="blog_t">
-    <article class="uk-article" :id="'blog_' + blog.number">
-        <h1 class="uk-article-title">{{title}}</h1>
-        <p class="uk-article-meta">{{meta}}</p>
-        <hr class="uk-article-divider">
+<template id="page_t">
+    <article class="uk-article">
+        <p class="uk-article-lead">{{title}}</p>
         <div v-html="html_content"></div>
     </article>
 </template>
@@ -85,6 +70,6 @@
 <script type="text/javascript" src="vendors/Uikit/js/uikit.js"></script>
 <script type="text/javascript" src="vendors/vue/vue.js"></script>
 <script src="vendors/markdown-browser-0.6.0-beta1/markdown.min.js" charset="utf-8"></script>
-<!-- index.html -->
-<script type="text/javascript" src="js/main.js"></script>
+<!-- pages.html -->
+<script type="text/javascript" src="js/pages.js"></script>
 </html>

@@ -1,11 +1,7 @@
-const IssueList = 'https://api.github.com/repos/ForeverArt/foreverart.github.io/issues'
-const IssueById = function (id) {
-    return IssueList + '/' + id
-}
+const BlogList = 'https://api.github.com/repos/ForeverArt/foreverart.github.io/issues?labels=blog'
 
 const _API = {
-    'IssueList': IssueList,
-    'IssueById': IssueById
+    'BlogList': BlogList
 }
 
 let blog = Vue.component('blog', {
@@ -86,12 +82,18 @@ let main = new Vue({
         getBlogs: function () {
             let self = this
             // self 指代this 否则由于闭包无法在下方匿名函数中使用
-            $.get(_API.IssueList, function (blogArray) {
+            $.get(_API.BlogList, function (blogArray) {
                 if (blogArray) {
                     // console.log(blogArray)
                     self.blogs = blogArray
                 }
             })
+        },
+        scrollTo: function (id) {
+            // document.getElementById(id).scrollIntoView()
+            $("html,body").animate({
+                scrollTop: $('#' + id).offset().top - 30
+            },1000)
         }
     }
 })
