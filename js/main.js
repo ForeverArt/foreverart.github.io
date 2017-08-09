@@ -86,6 +86,14 @@ let main = new Vue({
                 if (blogArray) {
                     // console.log(blogArray)
                     self.blogs = blogArray
+                    self.$nextTick(function () {
+                        let href = window.location.href
+                        if (href.indexOf('#') !== -1) {
+                            let id = href.split('#')[1]
+                            console.log('redirect to anchor ' + id)
+                            self.scrollTo(id)
+                        }
+                    })
                 }
             })
         },

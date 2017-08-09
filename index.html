@@ -53,7 +53,7 @@
                 </div>
                 <div v-if="blogs.length" class="visible-md visible-lg col-md-3 shadow2" role="complementary" id="sidebar">
                     <ul v-for="(blogItem, index) in blogs">
-                        <li><a @click="scrollTo('blog_' + blogItem.number)">{{blogItem.title}}</a></li>
+                        <li><a :href="'#blog_' + blogItem.number" @click="scrollTo('blog_' + blogItem.number)">{{blogItem.title}}</a></li>
                     </ul>
                 </div>
             </div>
