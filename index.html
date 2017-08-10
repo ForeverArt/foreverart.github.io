@@ -53,7 +53,7 @@
                 </div>
                 <div v-if="blogs.length" class="visible-md visible-lg col-md-3 shadow2" role="complementary" id="sidebar">
                     <ul v-for="(blogItem, index) in blogs">
-                        <li><a :href="'#blog_' + blogItem.number" @click="scrollTo('blog_' + blogItem.number)">{{blogItem.title}}</a></li>
+                        <li><a :id="'link_' + blogItem.number" :href="'#blog_' + blogItem.number" @click="scrollTo('blog_' + blogItem.number)">{{blogItem.title}}</a></li>
                     </ul>
                 </div>
             </div>
@@ -72,7 +72,14 @@
 <!-- blog -->
 <template id="blog_t">
     <article class="uk-article" :id="'blog_' + blog.number">
-        <h1 class="uk-article-title">{{title}}</h1>
+        <h1 class="uk-article-title">{{title}}
+            <span v-if="blog.number-1" style="float:right;font-size:1.2vw">
+                <a @click="nextBlog()"><i class="uk-icon-angle-double-down"></i> Skip</a>
+            </span>
+            <span v-else style="float:right;font-size:1.2vw">
+                <a @click="backTop()"><i class="uk-icon-angle-double-up"></i> Top</a>
+            </span>
+        </h1>
         <p class="uk-article-meta">{{meta}}</p>
         <hr class="uk-article-divider">
         <div v-html="html_content"></div>

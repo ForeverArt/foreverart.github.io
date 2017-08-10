@@ -37,6 +37,27 @@ let blog = Vue.component('blog', {
         },
         analyseContent: function (content) {
             this.html_content = markdown.toHTML(content)
+        },
+        nextBlog: function (content) {
+            let href = window.location.href
+            if (href.indexOf('#') !== -1 && href.split('#')[1]) {
+                let id = href.split('#')[1]
+                let newId = id.split('_')[1] - 1
+                newId = 'blog_' + newId
+                main.scrollTo(newId)
+                window.location.hash = newId
+            } else {
+                let newId = main.blogs[0].number - 1
+                newId = 'blog_' + newId
+                main.scrollTo(newId)
+                window.location.hash = newId
+            }
+        },
+        backTop: function () {
+            $("html,body").animate({
+                scrollTop: 0
+            }, 1500)
+            window.location.hash = ''
         }
     },
     computed: {
@@ -67,6 +88,9 @@ let main = new Vue({
     },
     methods: {
         chooseDetail: function (number) {
+            if (event.target != this) {
+                return
+            }
             this.showBlogDetail = true
             for (let i = 0; i < this.blogs.length; i++) {
                 if (this.blogs[i].number === number) {
@@ -88,7 +112,7 @@ let main = new Vue({
                     self.blogs = blogArray
                     self.$nextTick(function () {
                         let href = window.location.href
-                        if (href.indexOf('#') !== -1) {
+                        if (href.indexOf('#') !== -1 && href.split('#')[1]) {
                             let id = href.split('#')[1]
                             console.log('redirect to anchor ' + id)
                             self.scrollTo(id)
