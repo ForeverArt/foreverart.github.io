@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+body {
+    background-color: black;
+    max-width: 1040px;
+    margin: 1px 200px 1px 200px;
+}
+
+div {
+    width: 10px;
+    height: 10px;
+    margin: 1px 0 0 1px;
+    float: left;
+    background: #eee;
+    display: inline-block;
+}
+
+</style>
+<body>
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <script>
+
+    // var n = 1440 * 670 / 10 / 10;
+    var n = 94 * 72;
+
+    var whiteblue = d3.interpolateRgb("#eee", "steelblue"),
+    blueorange = d3.interpolateRgb("steelblue", "orange"),
+    orangepink = d3.interpolateRgb("orange", "pink"),
+    pinkpurple = d3.interpolateRgb("pink", "lightgreen"),
+    purpleyellow = d3.interpolateRgb("lightgreen", "yellow"),
+    yelloworange = d3.interpolateRgb("yellow", "orange"),
+    orangeblue = d3.interpolateRgb("orange", "steelblue"),
+    bluewhite = d3.interpolateRgb("steelblue", "#eee");
+
+    function position (d) {
+        let row = parseInt(d / 94);
+        let column = d - 94 * row;
+        return [row, column]
+    }
+
+    function inDigit (d) {
+        let pos = position(d)
+        let row = pos[0],
+            column = pos[1]
+        if (column >= 10 && column <= 12 && row >= 8 && row <= 32) {
+            return true
+        }
+        if (row >= 31 && row <= 32 && column >= 10 && column <= 22) {
+            return true
+        }
+        let y0 = 25,
+            x0 = 32
+        let dis = (row - y0) * (row - y0) + (column - x0) * (column - x0)
+        if (dis <= 8 * 8 && dis >=6*6) {
+            return true
+        }
+
+        if (row<=32&& column >= 42 && column <= 70 && (24+row===column||14+row+column===102)) {
+            return true
+        }
+        if ((column >= 74 && column<= 89)&&(row==17||row==32)) {
+            return true
+        }
+        if (column >= 74 && column<= 84&&row==25){
+            return true
+        }
+        if (column==74&&(row>=17&&row<=32)) {
+            return true
+        }
+
+        if (column >= 42 && column <= 55&&(row===column||row+column===97)){
+            return true
+        }
+
+        if ((row===42||row===55)&&column<=28&&column>=15){
+            return true
+        }
+
+        if (column<=28&&column>=16&&row+column===70){
+            return true
+        }
+
+        if (row<=49 && column >= 67 && column <= 80&&(25+row===column||5+row+column===127)){
+            return true
+        }
+        if (row>=49 && row<= 55 && (column==74||column==73)) {
+            return true
+        }
+    }
+
+    d3.select("body").selectAll("div")
+    .data(d3.range(n))
+    .enter().append("div")
+    .transition()
+    .delay(function(d, i) { return i + Math.random() * n / 4; })
+    .ease(d3.easeLinear)
+    .on("start", function repeat() {
+        d3.active(this)
+            .styleTween("background-color", function(d, i) {
+                return whiteblue;
+            })
+        .transition()
+            .delay(1500)
+            .styleTween("background-color", function(d, i) {
+                return blueorange;
+            })
+        .transition()
+            .delay(1500)
+            .styleTween("background-color", function(d, i) {
+                return orangepink;
+            })
+        .transition()
+            .delay(1500)
+            .styleTween("background-color", function(d, i) {
+                if (inDigit(d)) {
+                    return d3.interpolateRgb('pink', 'pink');
+                }
+                return pinkpurple;
+            })
+        .transition()
+            .delay(1500)
+            .styleTween("background-color", function(d, i) {
+                if (inDigit(d)) {
+                    return d3.interpolateRgb('pink', 'pink');
+                }
+                return purpleyellow;
+            })
+        .transition()
+            .delay(1500)
+            .styleTween("background-color", function(d, i) {
+                if (inDigit(d)) {
+                    return d3.interpolateRgb('pink', 'pink');
+                }
+                return yelloworange;
+            })
+        .transition()
+            .delay(3000)
+            .styleTween("background-color", function(d, i) {
+                if (inDigit(d)) {
+                    return d3.interpolateRgb('pink', 'pink');
+                }
+                return orangeblue;
+            })
+        .transition()
+            .delay(8000)
+            .styleTween("background-color", function(d, i) {
+                return bluewhite;
+            })
+        .transition()
+        .delay(4000)
+        .on("start", repeat);
+    });
+    </script>
+    <script src="js/100.js" charset="utf-8"></script>
