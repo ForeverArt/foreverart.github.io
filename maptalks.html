@@ -12,7 +12,52 @@
        <script type="text/javascript">
             var dom = document.getElementById("container");
             var myChart = echarts.init(dom);
-            var data1=[{name:"wnm",value:[121.25354625637668, 31.12640542845193, 30000]}];
+            var geoCoords = [
+                // 23省
+                {name:'甘肃', geoCoord:[103.73, 36.03], value: Math.random() * 600000},
+                {name:'青海', geoCoord:[101.74, 36.56], value: Math.random() * 600000},
+                {name:'四川', geoCoord:[104.06, 30.67], value: Math.random() * 600000},
+                {name:'河北', geoCoord:[114.48, 38.03], value: Math.random() * 600000},
+                {name:'云南', geoCoord:[102.73, 25.04], value: Math.random() * 600000},
+                {name:'贵州', geoCoord:[106.71, 26.57], value: Math.random() * 600000},
+                {name:'湖北', geoCoord:[114.31, 30.52], value: Math.random() * 600000},
+                {name:'河南', geoCoord:[113.65, 34.76], value: Math.random() * 600000},
+                {name:'山东', geoCoord:[117, 36.65], value: Math.random() * 600000},
+                {name:'江苏', geoCoord:[118.78, 32.04], value: Math.random() * 600000},
+                {name:'安徽', geoCoord:[117.27, 31.86], value: Math.random() * 600000},
+                {name:'浙江', geoCoord:[120.19, 30.26], value: Math.random() * 600000},
+                {name:'江西', geoCoord:[115.89, 28.68], value: Math.random() * 600000},
+                {name:'福建', geoCoord:[119.3, 26.08], value: Math.random() * 600000},
+                {name:'广东', geoCoord:[113.23, 23.16], value: Math.random() * 600000},
+                {name:'湖南', geoCoord:[113, 28.21], value: Math.random() * 600000},
+                {name:'海南', geoCoord:[110.35, 20.02], value: Math.random() * 600000},
+                {name:'辽宁', geoCoord:[123.38, 41.8], value: Math.random() * 600000},
+                {name:'吉林', geoCoord:[125.35, 43.88], value: Math.random() * 600000},
+                {name:'黑龙江', geoCoord:[126.63, 45.75], value: Math.random() * 600000},
+                {name:'山西', geoCoord:[112.53, 37.87], value: Math.random() * 600000},
+                {name:'陕西', geoCoord:[108.95, 34.27], value: Math.random() * 600000},
+                {name:'台湾', geoCoord:[121.30, 25.03], value: Math.random() * 600000},
+                // 4直辖市
+                {name:'北京', geoCoord:[116.46, 39.92], value: Math.random() * 600000},
+                {name:'上海', geoCoord:[121.48, 31.22], value: Math.random() * 600000},
+                {name:'重庆', geoCoord:[106.54, 29.59], value: Math.random() * 600000},
+                {name:'天津', geoCoord:[117.2, 39.13], value: Math.random() * 600000},
+                // 5自治区
+                {name:'内蒙古', geoCoord:[111.65, 40.82], value: Math.random() * 600000},
+                {name:'广西', geoCoord:[108.33, 22.84], value: Math.random() * 600000},
+                {name:'西藏', geoCoord:[91.11, 29.97], value: Math.random() * 600000},
+                {name:'宁夏', geoCoord:[106.27, 38.47], value: Math.random() * 600000},
+                {name:'新疆', geoCoord:[87.68, 43.77], value: Math.random() * 600000},
+                // 2特别行政区
+                {name:'香港', geoCoord:[114.17, 22.28], value: Math.random() * 600000},
+                {name:'澳门', geoCoord:[113.54, 22.19], value: Math.random() * 600000}
+                ]
+            // var data=[
+            //     {name:"wnm1",value:[115.25354625637668, 31.12640542845193, 30000]},
+            //     {name:"wnm2",value:[111.25354625637668, 31.12640542845193, 80000]},
+            //     {name:"wnm3",value:[105.25354625637668, 31.12640542845193, 40000]},
+            //     {name:"wnm4",value:[100.25354625637668, 31.12640542845193, 30000]},
+            // ];
             // https://gallerybox.echartsjs.com
             //读取MapboxStyle数据
             var option = {
@@ -20,19 +65,20 @@
                     show:false,
                     max:30000,
                     inRange: {
-                        color: ['#313695', '#4575b4', '#74add1', '#abd9e9', '#e0f3f8', '#ffffbf', '#fee090', '#fdae61', '#f46d43', '#d73027', '#a50026']
+                        corlor: ["#070093", "#1c3fbf", "#1482e5", "#70b4eb", "#b4e0f3", "#ffffff"],
                     },
                 },
                 tooltip:{
                 },
                 maptalks3D: {
-                    center: [108.4693, 31.213070],
-                    zoom: 6,
-                    pitch: 40,
+                    center: [108.4693, 34.313070],
+                    zoom: 5.3,
+                    pitch: 30,
                     urlTemplate: 'http://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+                    // urlTemplate:'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
                     // altitudeScale: 1,
                     postEffect: {
-                        enable: true,
+                        // enable: true,
                         FXAA: {
                             enable: true
                         }
@@ -40,8 +86,8 @@
                     light: {
                         main: {
                             intensity: 1,
-                            // shadow: true,
-                            // shadowQuality: 'high'
+                            shadow: true,
+                            shadowQuality: 'high'
                         },
                         ambient: {
                             intensity: 0.
@@ -54,14 +100,38 @@
                         }
                     }
                 },
-                series: [{
-                    type: 'bar3D',
-                    shading: 'realistic',
-                    coordinateSystem: 'maptalks3D',
-                    barSize: 0.4,
-                    silent: true,
-                    data:data1
-                }]
+                series: geoCoords.map(item => {
+                    return ({
+                        type: 'bar3D',
+                        shading: 'realistic',
+                        coordinateSystem: 'maptalks3D',
+                        barSize: 1,
+                        // silent: true,
+                        data: [{ name:item.name, value: [...item.geoCoord,  item.value] }],
+                        label: {
+                            show: false,
+                            textStyle: {
+                                fontSize: 16,
+                                borderWidth: 1
+                            },
+                        },
+                        itemStyle: {
+                            opacity: 0.7,
+                        },
+                        emphasis: {
+                            label: {
+                                textStyle: {
+                                    fontSize: 20,
+                                    color: '#900'
+                                },
+                            },
+                           
+                            // itemStyle: {
+                            //     color: '#900'
+                            // }
+                        }
+                    })
+                })
             }
 
             if (option && typeof option === "object") {
