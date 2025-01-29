@@ -1,28 +1,120 @@
-// 前端：HTML + JavaScript + WebSocket
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple Chat</title>
+    <title>AI Comp</title>
     <style>
-        body { font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; }
-        #messages { border: 1px solid #ccc; padding: 10px; height: 400px; overflow-y: auto; display: flex; flex-direction: column; }
-        .message { padding: 8px; border-radius: 10px; margin: 5px; max-width: 70%; }
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 600px; 
+            margin: auto; 
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            height: 95vh;
+            justify-content: space-between;
+        }
+        #messages { 
+            border: 1px solid #ccc; 
+            padding: 10px; 
+            flex-grow: 1;
+            overflow-y: auto; 
+            display: flex; 
+            flex-direction: column; 
+        }
+        .message { 
+            padding: 8px; 
+            border-radius: 10px; 
+            margin: 5px; 
+            max-width: 70%; 
+        }
         .user { background-color: #dcf8c6; align-self: flex-end; }
         .server { background-color: #f1f1f1; align-self: flex-start; }
-        input, button { margin-top: 10px; width: calc(100% - 22px); padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
-        button { width: 100%; background-color: #007bff; color: white; cursor: pointer; }
+        input, button { 
+            margin-top: 10px; 
+            width: calc(100% - 22px); 
+            padding: 10px; 
+            border: 1px solid #ccc; 
+            border-radius: 5px; 
+        }
+        button { 
+            width: 100%; 
+            background-color: #007bff; 
+            color: white; 
+            cursor: pointer; 
+        }
+        #loading { 
+            font-size: 18px; 
+            color: #007bff; 
+            display: none; 
+        }
+        #room-id, #user-id { 
+            padding: 10px; 
+            border: 1px solid #ccc; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            background-color: #f9f9f9; 
+        }
+        #room-id:hover, #user-id:hover { 
+            background-color: #e0e0e0; 
+        }
+        .create-room-btn { 
+            margin-top: 0px;
+            padding: 10px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+        }
+        .create-room-btn:hover {
+            background-color: #218838;
+        }
     </style>
 </head>
 <body>
-    <h2>Chat</h2>
+    <!-- Create Room Button -->
+    <button class="create-room-btn" onclick="createNewRoom()">Create New Room</button>
+    <div id="loading">Loading... Redirecting to a room...</div>
+
+    <!-- Room and User ID display -->
+    <div>
+        <div id="room-id" onclick="copyToClipboard('room-id')">Room ID: <span id="room-id-text"></span></div>
+        <div id="user-id" onclick="copyToClipboard('user-id')">User ID: <span id="user-id-text"></span></div>
+    </div>
+
     <div id="messages"></div>
     <input id="input" type="text" placeholder="Type a message..." onkeypress="handleKeyPress(event)">
     <button onclick="sendMessage()">Send</button>
 
+
     <script>
-        const ws = new WebSocket('wss://fe16c2a4-1658-432a-89f3-d0506971ee0e-00-22cqt6ba58lrk.pike.replit.dev/ws');
+        // 获取现有的房间号，如果没有则生成新的房间号
+        const queryParams = new URLSearchParams(window.location.search);
+        let roomId = queryParams.get('room');
+        if (!roomId) {
+            roomId = generateRandomString(16);  // 如果没有房间号，生成16位随机房间号
+            document.getElementById('loading').style.display = 'block';  // 显示loading
+            setTimeout(() => {
+                window.location.href = `?room=${roomId}`;  // 跳转到带房间号的地址
+            }, 2000);  // 等待2秒后跳转
+        }
+
+        // 获取或生成用户ID
+        let userId = localStorage.getItem('userId');
+        if (!userId) {
+            userId = generateRandomUserId();
+            localStorage.setItem('userId', userId);
+        }
+
+        // 设置页面显示房间号和用户ID
+        document.getElementById('room-id-text').textContent = roomId;
+        document.getElementById('user-id-text').textContent = userId;
+
+        // WebSocket 连接
+        const ws = new WebSocket(`wss://fe16c2a4-1658-432a-89f3-d0506971ee0e-00-22cqt6ba58lrk.pike.replit.dev/ws?room=${roomId}&userId=${userId}`);
         const messagesDiv = document.getElementById('messages');
         const input = document.getElementById('input');
 
@@ -57,7 +149,7 @@
                 userMessage.classList.add('message', 'user');
                 userMessage.textContent = message;
                 messagesDiv.appendChild(userMessage);
-                ws.send(message);
+                ws.send(JSON.stringify({ message: message, roomId: roomId, userId: userId }));
                 input.value = '';
                 messagesDiv.scrollTop = messagesDiv.scrollHeight;
             }
@@ -67,6 +159,54 @@
             if (event.key === 'Enter') {
                 sendMessage();
             }
+        }
+
+        function generateRandomString(length) {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            let result = '';
+            for (let i = 0; i < length; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
+        }
+
+        function generateRandomUserId() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+            const digits = '0123456789';
+            let userId = '';
+            userId += getRandomChars(chars, 4);  // 生成4个字母
+            userId += getRandomChars(digits, 4);  // 生成4个数字
+            return userId;
+        }
+
+        function getRandomChars(chars, length) {
+            let result = '';
+            for (let i = 0; i < length; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
+        }
+
+        // 复制到剪贴板
+        function copyToClipboard(elementId) {
+            const textToCopy = document.getElementById(elementId + '-text').textContent;
+            const textArea = document.createElement('textarea');
+            if (elementId == 'room-id') {
+                textArea.value = 'https://foreverart.github.io/aicomp.html?room=' + textToCopy;
+            } else {
+                textArea.value = textToCopy;
+            }
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            alert(`${elementId.replace('-', ' ').toUpperCase()} copied!`);
+        }
+
+        // 创建新房间
+        function createNewRoom() {
+            const newRoomId = generateRandomString(16);
+            window.location.href = `?room=${newRoomId}`;  // 跳转到新房间
         }
     </script>
 </body>
