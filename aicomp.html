@@ -1,0 +1,73 @@
+// 前端：HTML + JavaScript + WebSocket
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Chat</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; }
+        #messages { border: 1px solid #ccc; padding: 10px; height: 400px; overflow-y: auto; display: flex; flex-direction: column; }
+        .message { padding: 8px; border-radius: 10px; margin: 5px; max-width: 70%; }
+        .user { background-color: #dcf8c6; align-self: flex-end; }
+        .server { background-color: #f1f1f1; align-self: flex-start; }
+        input, button { margin-top: 10px; width: calc(100% - 22px); padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
+        button { width: 100%; background-color: #007bff; color: white; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h2>Chat</h2>
+    <div id="messages"></div>
+    <input id="input" type="text" placeholder="Type a message..." onkeypress="handleKeyPress(event)">
+    <button onclick="sendMessage()">Send</button>
+
+    <script>
+        const ws = new WebSocket('wss://silver-guide-777rwjrv6jx3pr95.github.dev/ws');
+        const messagesDiv = document.getElementById('messages');
+        const input = document.getElementById('input');
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            const msgElement = document.createElement('div');
+            msgElement.classList.add('message', 'server');
+            
+            if (data.type === 'text') {
+                msgElement.textContent = data.text;
+            } else if (data.type === 'image') {
+                const img = document.createElement('img');
+                img.src = data.url;
+                img.style.maxWidth = '100%';
+                msgElement.appendChild(img);
+            } else if (data.type === 'video') {
+                const video = document.createElement('video');
+                video.src = data.url;
+                video.controls = true;
+                video.style.maxWidth = '100%';
+                msgElement.appendChild(video);
+            }
+            
+            messagesDiv.appendChild(msgElement);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        };
+
+        function sendMessage() {
+            const message = input.value.trim();
+            if (message) {
+                const userMessage = document.createElement('div');
+                userMessage.classList.add('message', 'user');
+                userMessage.textContent = message;
+                messagesDiv.appendChild(userMessage);
+                ws.send(message);
+                input.value = '';
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            }
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+    </script>
+</body>
+</html>
