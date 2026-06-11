@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Listening | ForeverArt.github.io</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="images/favicon.ico" rel="icon" type="image/x-icon" />
+    <!-- from vendors -->
+    <link rel="stylesheet" href="vendors/font-awesome/css/font-awesome.css">
+    <link rel="stylesheet" href="vendors/bootstrap-3.3.7-dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="vendors/Uikit/css/uikit.css">
+    <link rel="stylesheet" href="vendors/Uikit/css/uikit.almost-flat.css">
+    <link rel="stylesheet" href="vendors/Uikit/expand/uikit.docs.min.css">
+    <link rel="stylesheet" href="vendors/Uikit/expand/docs.css">
+    <!-- self -->
+    <link rel="stylesheet" href="css/main.css">
+    <!-- optional libs: MP3 encode (lamejs) & Word parsing (mammoth), UMD globals -->
+    <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
+    <style>
+        .ls-card { margin-bottom: 24px; }
+        .ls-card > label.ls-step { font-weight: 600; font-size: 15px; display: block; margin-bottom: 12px; }
+        .ls-card .form-group { margin-bottom: 0; }
+        #ls-text { font-family: ui-monospace, Consolas, monospace; font-size: 13px; min-height: 200px; }
+        .ls-sub { color: #888; margin: -4px 0 24px; }
+        .ls-hint { color: #999; font-size: 12px; }
+        .ls-row { display: flex; flex-wrap: wrap; gap: 14px; }
+        .ls-row > div { flex: 1; min-width: 150px; }
+        .ls-btns { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
+        #ls-player { width: 100%; margin-top: 14px; }
+        #ls-timeline td.t { color: #2d7; font-variant-numeric: tabular-nums; width: 64px; white-space: nowrap; }
+        .ls-pill { font-size: 11px; padding: 2px 9px; border-radius: 999px; background: #eef; color: #557; margin-left: 8px; vertical-align: middle; }
+        .ls-status { font-size: 13px; color: #777; margin-top: 12px; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <!-- nav -->
+    <nav class="uk-navbar" id="nav-header">
+        <ul class="uk-navbar-nav">
+            <li><a href="index.html"><i class="uk-icon-paper-plane"></i> Blog</a></li>
+            <li><a href="essay.html"><i class="uk-icon-book"></i> Essay</a></li>
+            <li><a href="pages.html"><i class="uk-icon-bookmark"></i> Pages</a></li>
+            <li><a href="notes.html"><i class="uk-icon-pencil-square"></i> Notes</a></li>
+            <li><a href="webrtc-chat.html"><i class="uk-icon-commenting"></i> WebRTC-Chat</a></li>
+            <li><a href="maptalks.html"><i class="uk-icon-map"></i> Maptalks</a></li>
+            <li><a href="aicomp.html"><i class="uk-icon-commenting"></i> AI Comp</a></li>
+            <li class="uk-active"><a href="listening.html"><i class="uk-icon-headphones"></i> Listening</a></li>
+        </ul>
+        <div class="uk-navbar-flip">
+            <ul class="uk-navbar-nav">
+                <li><a href="https://github.com/ForeverArt/foreverart.github.io" target="_blank"><i class="uk-icon-github"></i> Github</a></li>
+                <li><a href="https://github.com/ForeverArt/foreverart.github.io/issues" target="_blank"><i class="uk-icon-cog"></i> Admin</a></li>
+            </ul>
+        </div>
+    </nav>
+    <!-- end nav -->
+
+    <div class="container bs-docs-container">
+        <h1>听力材料朗读器 <span class="ls-pill">纯浏览器 · 零后端 · 零配额</span></h1>
+        <p class="ls-sub">在本地用 WebAssembly 神经语音（Piper）合成。首次使用每个音色会下载约 20–60MB 模型，之后离线可用。</p>
+
+        <div class="shadow2 ls-card">
+            <label class="ls-step">① 粘贴听力材料（或上传 .docx）</label>
+            <textarea id="ls-text" class="form-control" placeholder="W: ... / M: ... 对话，含中文提示与英文短文。点&quot;填入示例&quot;看格式。"></textarea>
+            <div class="ls-btns">
+                <input type="file" id="ls-file" accept=".docx,.txt" style="display:none" />
+                <button class="btn btn-default" id="ls-upload">上传 .docx / .txt</button>
+                <button class="btn btn-default" id="ls-sample">填入示例</button>
+                <span class="ls-hint">旧版 .doc 浏览器读不了，请先在 Word 另存为 .docx 或直接粘贴。</span>
+            </div>
+        </div>
+
+        <div class="shadow2 ls-card">
+            <label class="ls-step">② 音色与节奏</label>
+            <div class="ls-row">
+                <div><label class="ls-hint">W（英文女声）</label><select id="ls-vFemale" class="form-control"></select></div>
+                <div><label class="ls-hint">M（英文男声）</label><select id="ls-vMale" class="form-control"></select></div>
+                <div><label class="ls-hint">中文提示</label><select id="ls-vChinese" class="form-control"></select></div>
+                <div><label class="ls-hint">短文旁白</label><select id="ls-vNarrator" class="form-control"></select></div>
+            </div>
+            <div class="ls-row" style="margin-top:14px;">
+                <div><label class="ls-hint">句间停顿（秒）</label><input type="number" id="ls-pSentence" class="form-control" value="3" min="0" step="0.5" /></div>
+                <div><label class="ls-hint">两遍之间（秒）</label><input type="number" id="ls-pRepeat" class="form-control" value="2" min="0" step="0.5" /></div>
+                <div><label class="ls-hint">短文后停顿（秒）</label><input type="number" id="ls-pPassage" class="form-control" value="30" min="0" step="1" /></div>
+                <div><label class="ls-hint">英文朗读遍数</label><input type="number" id="ls-repeat" class="form-control" value="2" min="1" max="3" step="1" /></div>
+            </div>
+        </div>
+
+        <div class="shadow2 ls-card">
+            <label class="ls-step">③ 生成</label>
+            <div class="ls-btns">
+                <button class="btn btn-primary" id="ls-go">开始合成</button>
+                <span id="ls-fmt" class="ls-hint"></span>
+            </div>
+            <div class="progress" style="margin-top:14px;">
+                <div id="ls-prog" class="progress-bar" role="progressbar" style="width:0%"></div>
+            </div>
+            <div class="ls-status" id="ls-statusText">就绪。</div>
+            <audio id="ls-player" controls style="display:none"></audio>
+            <div class="ls-btns" id="ls-downloads" style="display:none;">
+                <a class="btn btn-success btn-sm" id="ls-dlAudio" download>下载音频</a>
+                <a class="btn btn-default btn-sm" id="ls-dlTxt" download>下载时间对照表</a>
+            </div>
+            <table class="table" id="ls-timeline" style="margin-top:14px;"></table>
+        </div>
+    </div>
+
+    <script type="module">
+    import * as piper from "https://esm.sh/@mintplex-labs/piper-tts-web@1.0.4";
+
+    const $ = (id) => document.getElementById(id);
+    const SAMPLE = `2025-2026学年度第二学期期末练习卷
+八年级英语听力材料
+（八年级英语听力测试现在开始，请同学们做好准备。）
+一、听力（共15小题，每小题1分，满分15分）
+A) 听对话，选图片
+1. W: Many people around the world need help, Daniel.
+  M: Yes, I have helped an elderly man in my community.
+2. W: What does your mom do?
+  M: She works for WWF. Her job is to protect wild animals.
+C) 听短文，回答问题。
+There's a big food chain in nature. It plays an important role in balancing the whole natural world. We should protect the animals and plants. Protecting them is protecting ourselves.
+（听力部分到此结束，请同学们继续答题。）`;
+
+    // ---------- 解析（与 Python 版同逻辑）----------
+    const DIALOGUE_START = /^(\d+)\s*[.、)]\s*([WMwm])\s*[:：]\s*(.*)$/;
+    const SPEAKER_LINE   = /^([WMwm])\s*[:：]\s*(.*)$/;
+    const HAS_CJK        = /[\u4e00-\u9fff]/;
+
+    function parseBlocks(text) {
+        const blocks = [];
+        let dia = null, pas = [];
+        const flushDia = () => { if (dia && dia.lines.length) blocks.push({ kind:"dialogue", label:dia.label, lines:dia.lines }); dia = null; };
+        const flushPas = () => { if (pas.length) { const j = pas.join(" "); blocks.push({ kind:"passage", label:"短文  " + j.slice(0,24) + "…", lines:[{ role:"narrator", text:j }] }); } pas = []; };
+        for (const raw of text.split(/\r?\n/)) {
+            const line = raw.trim();
+            if (!line) continue;
+            let m = DIALOGUE_START.exec(line);
+            if (m) {
+                flushPas(); flushDia();
+                const [, num, sp, content] = m;
+                dia = { label: `第${num}题  ${content.slice(0,24)}`, lines: [] };
+                if (content.trim()) dia.lines.push({ role: sp.toUpperCase()==="W" ? "female":"male", text: content.trim() });
+                continue;
+            }
+            m = SPEAKER_LINE.exec(line);
+            if (m && dia) {
+                const sp = m[1].toUpperCase(), content = m[2].trim();
+                if (content) dia.lines.push({ role: sp==="W" ? "female":"male", text: content });
+                continue;
+            }
+            if (HAS_CJK.test(line)) { flushPas(); flushDia(); blocks.push({ kind:"chinese", label:line, lines:[{ role:"chinese", text:line }] }); continue; }
+            flushDia(); pas.push(line);
+        }
+        flushPas(); flushDia();
+        return blocks;
+    }
+
+    const KIND = {
+        chinese:  { repeat:1, sentence:0.5, between:0,   after:1.0 },
+        dialogue: { repeat:2, sentence:3.0, between:2.0, after:3.0 },
+        passage:  { repeat:2, sentence:0,   between:2.0, after:30.0 },
+    };
+
+    // ---------- 音色 ----------
+    const DEFAULTS = { female:"en_US-hfc_female-medium", male:"en_US-hfc_male-medium",
+                       narrator:"en_US-hfc_female-medium", chinese:"zh_CN-huayan-medium" };
+    const FALLBACK_VOICES = [
+        "en_US-hfc_female-medium","en_US-amy-medium","en_US-kristin-medium","en_US-ljspeech-medium",
+        "en_US-hfc_male-medium","en_US-joe-medium","en_US-bryce-medium","en_US-ryan-high",
+        "en_GB-jenny_dioco-medium","en_GB-alan-medium","en_GB-cori-medium",
+        "zh_CN-huayan-medium",
+    ];
+
+    function fillSelect(sel, ids, def, prefix) {
+        sel.innerHTML = "";
+        ids.filter(id => !prefix || id.startsWith(prefix)).forEach(id => {
+            const o = document.createElement("option"); o.value = id; o.textContent = id; sel.appendChild(o);
+        });
+        if ([...sel.options].some(o => o.value === def)) sel.value = def;
+    }
+
+    async function loadVoices() {
+        let ids = FALLBACK_VOICES;
+        try {
+            const list = await piper.voices();
+            const keys = list.map(v => v.key || v.id || v).filter(Boolean);
+            if (keys.length) ids = keys;
+        } catch (e) { /* 离线或 CDN 受限时用内置列表 */ }
+        fillSelect($("ls-vFemale"),   ids, DEFAULTS.female,   "en");
+        fillSelect($("ls-vMale"),     ids, DEFAULTS.male,     "en");
+        fillSelect($("ls-vNarrator"), ids, DEFAULTS.narrator, "en");
+        fillSelect($("ls-vChinese"),  ids, DEFAULTS.chinese,  "zh");
+    }
+
+    // ---------- 音频工具 ----------
+    const SR = 22050;
+    let audioCtx;
+    function ctx() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SR }); return audioCtx; }
+
+    async function synth(text, voiceId) {
+        const wavBlob = await piper.predict({ text, voiceId });
+        const buf = await ctx().decodeAudioData(await wavBlob.arrayBuffer());
+        return buf.getChannelData(0);
+    }
+    const silence = (sec) => new Float32Array(Math.max(0, Math.round(sec * SR)));
+
+    function concatFloat(parts) {
+        const len = parts.reduce((s,p) => s + p.length, 0);
+        const out = new Float32Array(len);
+        let off = 0; for (const p of parts) { out.set(p, off); off += p.length; }
+        return out;
+    }
+
+    function floatToWav(samples, sr) {
+        const buf = new ArrayBuffer(44 + samples.length * 2);
+        const v = new DataView(buf);
+        const ws = (o,s) => { for (let i=0;i<s.length;i++) v.setUint8(o+i, s.charCodeAt(i)); };
+        ws(0,"RIFF"); v.setUint32(4, 36 + samples.length*2, true); ws(8,"WAVE"); ws(12,"fmt ");
+        v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+        v.setUint32(24,sr,true); v.setUint32(28,sr*2,true); v.setUint16(32,2,true); v.setUint16(34,16,true);
+        ws(36,"data"); v.setUint32(40, samples.length*2, true);
+        let o = 44; for (let i=0;i<samples.length;i++){ let s=Math.max(-1,Math.min(1,samples[i])); v.setInt16(o, s<0?s*0x8000:s*0x7FFF, true); o+=2; }
+        return new Blob([buf], { type:"audio/wav" });
+    }
+
+    function floatToMp3(samples, sr) {
+        if (!window.lamejs) return null;
+        const enc = new lamejs.Mp3Encoder(1, sr, 128);
+        const pcm = new Int16Array(samples.length);
+        for (let i=0;i<samples.length;i++){ let s=Math.max(-1,Math.min(1,samples[i])); pcm[i]= s<0?s*0x8000:s*0x7FFF; }
+        const out = []; const block = 1152;
+        for (let i=0;i<pcm.length;i+=block){ const b = enc.encodeBuffer(pcm.subarray(i, i+block)); if (b.length) out.push(b); }
+        const end = enc.flush(); if (end.length) out.push(end);
+        return new Blob(out, { type:"audio/mpeg" });
+    }
+
+    const fmtTime = (sec) => { const s = Math.round(sec); return String(Math.floor(s/60)).padStart(2,"0") + ":" + String(s%60).padStart(2,"0"); };
+
+    // ---------- 生成 ----------
+    async function generate() {
+        const blocks = parseBlocks($("ls-text").value);
+        if (!blocks.length) { setStatus("没有解析到可朗读内容。"); return; }
+
+        const cfg = {
+            sentence: parseFloat($("ls-pSentence").value) || 0,
+            between:  parseFloat($("ls-pRepeat").value)   || 0,
+            passage:  parseFloat($("ls-pPassage").value)  || 0,
+            repeat:   Math.max(1, parseInt($("ls-repeat").value) || 2),
+        };
+        const voiceOf = { female:$("ls-vFemale").value, male:$("ls-vMale").value, narrator:$("ls-vNarrator").value, chinese:$("ls-vChinese").value };
+
+        $("ls-go").disabled = true;
+        $("ls-downloads").style.display = "none";
+        $("ls-player").style.display = "none";
+        $("ls-timeline").innerHTML = "";
+
+        const needed = [...new Set(blocks.flatMap(b => b.lines.map(l => voiceOf[l.role])))];
+        for (const id of needed) {
+            try { await piper.download(id, (p) => { setProg(p.loaded/p.total*100); setStatus(`下载音色 ${id} … ${Math.round(p.loaded*100/p.total)}%`); }); }
+            catch (e) { /* 已缓存或不可用时 predict 再拉 */ }
+        }
+
+        const total = blocks.reduce((s,b) => s + b.lines.length * (b.kind==="chinese"?1:cfg.repeat), 0);
+        let done = 0;
+        const parts = []; const timeline = []; let cursor = 0;
+
+        for (const b of blocks) {
+            const reps = b.kind==="chinese" ? 1 : cfg.repeat;
+            const sentPause = b.kind==="dialogue" ? cfg.sentence : KIND[b.kind].sentence;
+            const betweenPause = b.kind==="chinese" ? 0 : cfg.between;
+            const afterPause = b.kind==="passage" ? cfg.passage : (b.kind==="dialogue" ? cfg.sentence : KIND[b.kind].after);
+            timeline.push({ head: b.label });
+            for (let r=0; r<reps; r++) {
+                for (let i=0;i<b.lines.length;i++) {
+                    const line = b.lines[i];
+                    // 在合成前记录这句的起始时间，做到逐句时间对照
+                    timeline.push({ t: cursor / SR, role: line.role, text: line.text, rep: r+1, reps });
+                    setStatus(`合成中 ${done+1}/${total}：${b.label.slice(0,28)}`);
+                    const samples = await synth(line.text, voiceOf[line.role]);
+                    parts.push(samples); cursor += samples.length;
+                    done++; setProg(done/total*100);
+                    if (sentPause>0 && i < b.lines.length-1) { const s=silence(sentPause); parts.push(s); cursor+=s.length; }
+                }
+                if (r < reps-1 && betweenPause>0) { const s=silence(betweenPause); parts.push(s); cursor+=s.length; }
+            }
+            if (afterPause>0) { const s=silence(afterPause); parts.push(s); cursor+=s.length; }
+        }
+
+        const all = concatFloat(parts);
+        const durStr = fmtTime(all.length / SR);
+        setStatus(`合成完成，总时长约 ${durStr}，正在打包…`);
+
+        const mp3 = floatToMp3(all, SR);
+        const audioBlob = mp3 || floatToWav(all, SR);
+        const ext = mp3 ? "mp3" : "wav";
+        const url = URL.createObjectURL(audioBlob);
+        $("ls-player").src = url; $("ls-player").style.display = "block";
+        $("ls-dlAudio").href = url; $("ls-dlAudio").download = `output.${ext}`; $("ls-dlAudio").textContent = `下载 output.${ext}`;
+
+        const ROLE = { female:"W", male:"M", chinese:"中文", narrator:"短文" };
+        const esc = (s) => s.replace(/&/g,"&amp;").replace(/</g,"&lt;");
+        let txt = `output.${ext} 逐句时间对照表\n（英文读 ${cfg.repeat} 遍；句间 ${cfg.sentence}s；短文后 ${cfg.passage}s）\n总时长约 ${durStr}\n\n`;
+        let rows = '<thead><tr><th style="width:64px">时间</th><th style="width:64px">角色</th><th>内容</th></tr></thead><tbody>';
+        for (const e of timeline) {
+            if (e.head !== undefined) {
+                txt += `\n[${e.head}]\n`;
+                rows += `<tr><td colspan="3" style="font-weight:600;background:#f5f5f5;">${esc(e.head)}</td></tr>`;
+                continue;
+            }
+            const sp = ROLE[e.role] || e.role;
+            const mark = e.reps > 1 ? ` (第${e.rep}遍)` : "";
+            txt += `${fmtTime(e.t)}\t${sp}${mark}\t${e.text}\n`;
+            rows += `<tr><td class="t">${fmtTime(e.t)}</td><td style="white-space:nowrap;color:#888">${sp}${mark}</td><td>${esc(e.text)}</td></tr>`;
+        }
+        rows += "</tbody>";
+        $("ls-timeline").innerHTML = rows;
+        $("ls-dlTxt").href = URL.createObjectURL(new Blob([txt], { type:"text/plain;charset=utf-8" }));
+        $("ls-dlTxt").download = "时间对照表.txt";
+        $("ls-downloads").style.display = "flex";
+        setStatus(`完成 ✓ 总时长约 ${durStr}（${blocks.length} 段，${ext.toUpperCase()}）`);
+        $("ls-go").disabled = false;
+    }
+
+    function setStatus(s){ $("ls-statusText").textContent = s; }
+    function setProg(p){ $("ls-prog").style.width = Math.min(100,Math.max(0,p)) + "%"; }
+
+    // ---------- 事件 ----------
+    $("ls-sample").onclick = () => { $("ls-text").value = SAMPLE; };
+    $("ls-upload").onclick = () => $("ls-file").click();
+    $("ls-file").onchange = async (e) => {
+        const f = e.target.files[0]; if (!f) return;
+        if (f.name.toLowerCase().endsWith(".docx")) {
+            if (!window.mammoth) { setStatus("mammoth 未加载，无法解析 .docx，请联网或直接粘贴。"); return; }
+            const { value } = await window.mammoth.extractRawText({ arrayBuffer: await f.arrayBuffer() });
+            $("ls-text").value = value;
+        } else { $("ls-text").value = await f.text(); }
+        setStatus(`已载入 ${f.name}`);
+    };
+    $("ls-go").onclick = () => generate().catch(err => { console.error(err); setStatus("出错：" + err.message); $("ls-go").disabled = false; });
+    $("ls-fmt").textContent = window.lamejs ? "（输出 MP3）" : "（输出 WAV）";
+
+    loadVoices();
+    </script>
+</body>
+</html>
