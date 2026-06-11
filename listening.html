@@ -14,9 +14,9 @@
     <link rel="stylesheet" href="vendors/Uikit/expand/docs.css">
     <!-- self -->
     <link rel="stylesheet" href="css/main.css">
-    <!-- optional libs: MP3 encode (lamejs) & Word parsing (mammoth), UMD globals -->
-    <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
+    <!-- optional libs: MP3 encode (lamejs) & Word parsing (mammoth), UMD globals — 本地引入，零外网 -->
+    <script src="vendors/libs/lame.min.js"></script>
+    <script src="vendors/libs/mammoth.browser.min.js"></script>
     <style>
         .ls-card { margin-bottom: 24px; }
         .ls-card > label.ls-step { font-weight: 600; font-size: 15px; display: block; margin-bottom: 12px; }
@@ -31,6 +31,8 @@
         #ls-timeline td.t { color: #2d7; font-variant-numeric: tabular-nums; width: 64px; white-space: nowrap; }
         .ls-pill { font-size: 11px; padding: 2px 9px; border-radius: 999px; background: #eef; color: #557; margin-left: 8px; vertical-align: middle; }
         .ls-status { font-size: 13px; color: #777; margin-top: 12px; white-space: pre-wrap; }
+        .ls-spinner { width: 14px; height: 14px; border: 2px solid #cdd3e0; border-top-color: #2d7; border-radius: 50%; display: inline-block; vertical-align: -2px; margin-right: 8px; animation: ls-spin .8s linear infinite; }
+        @keyframes ls-spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -57,7 +59,7 @@
 
     <div class="container bs-docs-container">
         <h1>听力材料朗读器 <span class="ls-pill">纯浏览器 · 零后端 · 零配额</span></h1>
-        <p class="ls-sub">在本地用 WebAssembly 神经语音（Piper）合成。首次使用每个音色会下载约 20–60MB 模型，之后离线可用。</p>
+        <p class="ls-sub">在本地用 WebAssembly 神经语音（Piper）合成。引擎与全部音色模型已打包在 vendors/，100% 离线、零外网、零后端。</p>
 
         <div class="shadow2 ls-card">
             <label class="ls-step">① 粘贴听力材料（或上传 .docx）</label>
@@ -95,7 +97,7 @@
             <div class="progress" style="margin-top:14px;">
                 <div id="ls-prog" class="progress-bar" role="progressbar" style="width:0%"></div>
             </div>
-            <div class="ls-status" id="ls-statusText">就绪。</div>
+            <div class="ls-status"><span id="ls-spinner" class="ls-spinner" style="display:none"></span><span id="ls-statusText">就绪。</span></div>
             <audio id="ls-player" controls style="display:none"></audio>
             <div class="ls-btns" id="ls-downloads" style="display:none;">
                 <a class="btn btn-success btn-sm" id="ls-dlAudio" download>下载音频</a>
@@ -105,8 +107,25 @@
         </div>
     </div>
 
+    <!-- 把裸模块名 onnxruntime-web 映射到本地 1.26.0 bundle（与 vendors/ 里的 .jsep wasm 匹配），实现离线 -->
+    <script type="importmap">
+    {
+      "imports": {
+        "onnxruntime-web": "./vendors/onnxruntime-web/ort.bundle.min.mjs"
+      }
+    }
+    </script>
     <script type="module">
-    import * as piper from "https://esm.sh/@mintplex-labs/piper-tts-web@1.0.4";
+    // 全部本地引入，零外网：piper 库 + onnxruntime-web 都从 vendors/ 加载。
+    // 注意：不要用 esm.sh，它会给 piper_phonemize 注入 Node 的 fs polyfill(unenv)，
+    // 使 wasm 加载走 fs.readFile 而抛 “[unenv] fs.readFile is not implemented yet!”，
+    // 导致 predict 内的 Promise 永不返回（现象：卡在“合成中 1/51”）。原版 dist 在浏览器走 XHR，正常。
+    import * as piper from "./vendors/piper-tts-web/piper-tts-web.js";
+
+    // 预防措施：onnxruntime-web 的多线程 wasm 依赖 SharedArrayBuffer，需要站点开启跨源隔离(COOP/COEP)，
+    // GitHub Pages 这类静态托管默认没有。库会把线程数设成 CPU 核数，在无 SAB 环境可能让 session.run 卡死。
+    // 把核数伪装成 1，逼库走单线程，规避该风险（代价是合成略慢）。
+    try { Object.defineProperty(navigator, "hardwareConcurrency", { value: 1, configurable: true }); } catch (e) {}
 
     const $ = (id) => document.getElementById(id);
     const SAMPLE = `2025-2026学年度第二学期期末练习卷
@@ -162,44 +181,92 @@ There's a big food chain in nature. It plays an important role in balancing the 
         passage:  { repeat:2, sentence:0,   between:2.0, after:30.0 },
     };
 
-    // ---------- 音色 ----------
+    // ---------- 音色（只提供已离线打包到 vendors/piper/ 的音色）----------
+    // 键 = 音色 ID，值 = 该模型在 piper-voices 仓库里的相对路径（库内部据此命名 OPFS 缓存）。
+    const OFFLINE_VOICES = {
+        "en_US-hfc_female-medium": "en/en_US/hfc_female/medium/en_US-hfc_female-medium.onnx",
+        "en_US-hfc_male-medium":   "en/en_US/hfc_male/medium/en_US-hfc_male-medium.onnx",
+        "zh_CN-huayan-medium":     "zh/zh_CN/huayan/medium/zh_CN-huayan-medium.onnx",
+    };
+    const VOICE_LABEL = {
+        "en_US-hfc_female-medium": "英文女声 · hfc_female",
+        "en_US-hfc_male-medium":   "英文男声 · hfc_male",
+        "zh_CN-huayan-medium":     "中文 · huayan",
+    };
     const DEFAULTS = { female:"en_US-hfc_female-medium", male:"en_US-hfc_male-medium",
                        narrator:"en_US-hfc_female-medium", chinese:"zh_CN-huayan-medium" };
-    const FALLBACK_VOICES = [
-        "en_US-hfc_female-medium","en_US-amy-medium","en_US-kristin-medium","en_US-ljspeech-medium",
-        "en_US-hfc_male-medium","en_US-joe-medium","en_US-bryce-medium","en_US-ryan-high",
-        "en_GB-jenny_dioco-medium","en_GB-alan-medium","en_GB-cori-medium",
-        "zh_CN-huayan-medium",
-    ];
 
-    function fillSelect(sel, ids, def, prefix) {
+    function fillSelect(sel, def, prefix) {
         sel.innerHTML = "";
-        ids.filter(id => !prefix || id.startsWith(prefix)).forEach(id => {
-            const o = document.createElement("option"); o.value = id; o.textContent = id; sel.appendChild(o);
+        Object.keys(OFFLINE_VOICES).filter(id => id.startsWith(prefix)).forEach(id => {
+            const o = document.createElement("option"); o.value = id; o.textContent = VOICE_LABEL[id] || id; sel.appendChild(o);
         });
         if ([...sel.options].some(o => o.value === def)) sel.value = def;
     }
 
-    async function loadVoices() {
-        let ids = FALLBACK_VOICES;
-        try {
-            const list = await piper.voices();
-            const keys = list.map(v => v.key || v.id || v).filter(Boolean);
-            if (keys.length) ids = keys;
-        } catch (e) { /* 离线或 CDN 受限时用内置列表 */ }
-        fillSelect($("ls-vFemale"),   ids, DEFAULTS.female,   "en");
-        fillSelect($("ls-vMale"),     ids, DEFAULTS.male,     "en");
-        fillSelect($("ls-vNarrator"), ids, DEFAULTS.narrator, "en");
-        fillSelect($("ls-vChinese"),  ids, DEFAULTS.chinese,  "zh");
+    function loadVoices() {
+        fillSelect($("ls-vFemale"),   DEFAULTS.female,   "en");
+        fillSelect($("ls-vMale"),     DEFAULTS.male,     "en");
+        fillSelect($("ls-vNarrator"), DEFAULTS.narrator, "en");
+        fillSelect($("ls-vChinese"),  DEFAULTS.chinese,  "zh");
     }
+
+    // ---------- 本地静态资源（避免依赖 cdnjs/jsdelivr）----------
+    // 用绝对 URL，避免 onnxruntime-web 把相对路径按它自身脚本(esm.sh)的位置解析
+    const VENDOR = new URL("vendors/", location.href).href;
+    const LOCAL_WASM = {
+        onnxWasm: VENDOR,                              // ort-wasm-simd-threaded.jsep.{mjs,wasm}
+        piperWasm: VENDOR + "piper_phonemize.wasm",
+        piperData: VENDOR + "piper_phonemize.data",
+    };
 
     // ---------- 音频工具 ----------
     const SR = 22050;
     let audioCtx;
     function ctx() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SR }); return audioCtx; }
 
+    // 把本地 vendors/piper/ 里的模型写入浏览器 OPFS 缓存。piper 库内部固定从 HuggingFace 取模型，
+    // 但取之前会先查 OPFS（按文件名命中），所以只要预先把本地模型塞进 OPFS，库就完全不会联网。
+    // 同时用本地文件覆盖体积不符的旧缓存，可修复历史“下了一半”的残缺模型导致的卡死。
+    async function seedOpfs(voiceId) {
+        const rel = OFFLINE_VOICES[voiceId];
+        if (!rel) throw new Error("未离线打包的音色：" + voiceId);
+        const leaf = rel.split("/").pop();                 // e.g. en_US-hfc_female-medium.onnx
+        const root = await navigator.storage.getDirectory();
+        const dir = await root.getDirectoryHandle("piper", { create: true });
+        for (const name of [leaf, leaf + ".json"]) {       // 库缓存名：.onnx 与 .onnx.json
+            const localUrl = VENDOR + "piper/" + name;
+            let want = 0;
+            try { const h = await fetch(localUrl, { method: "HEAD" }); want = +(h.headers.get("Content-Length") || 0); } catch (e) {}
+            try {
+                const have = (await (await dir.getFileHandle(name)).getFile()).size;
+                if (have > 0 && (want === 0 || have === want)) continue;  // 已正确缓存，跳过
+            } catch (e) { /* 尚未缓存 */ }
+            const resp = await fetch(localUrl);
+            if (!resp.ok) throw new Error("缺少本地模型 vendors/piper/" + name + "（请重新下载）");
+            const blob = await resp.blob();
+            const fh = await dir.getFileHandle(name, { create: true });
+            const w = await fh.createWritable();
+            await w.write(blob);
+            await w.close();
+        }
+    }
+
+    // 每个音色一个独立会话。TtsSession 是单例，切换音色前需清空 _instance 强制新建，
+    // 这样多音色（W/M/中文）才能各自加载自己的模型。
+    const sessions = {};
+    async function getSession(voiceId, onProgress) {
+        if (sessions[voiceId]) return sessions[voiceId];
+        await seedOpfs(voiceId);                           // 先确保本地模型已在 OPFS，全程离线零外网
+        piper.TtsSession._instance = null;
+        const s = await piper.TtsSession.create({ voiceId, wasmPaths: LOCAL_WASM, progress: onProgress });
+        sessions[voiceId] = s;
+        return s;
+    }
+
     async function synth(text, voiceId) {
-        const wavBlob = await piper.predict({ text, voiceId });
+        const s = sessions[voiceId] || await getSession(voiceId);
+        const wavBlob = await s.predict(text);
         const buf = await ctx().decodeAudioData(await wavBlob.arrayBuffer());
         return buf.getChannelData(0);
     }
@@ -255,12 +322,25 @@ There's a big food chain in nature. It plays an important role in balancing the 
         $("ls-player").style.display = "none";
         $("ls-timeline").innerHTML = "";
 
-        const needed = [...new Set(blocks.flatMap(b => b.lines.map(l => voiceOf[l.role])))];
-        for (const id of needed) {
-            try { await piper.download(id, (p) => { setProg(p.loaded/p.total*100); setStatus(`下载音色 ${id} … ${Math.round(p.loaded*100/p.total)}%`); }); }
-            catch (e) { /* 已缓存或不可用时 predict 再拉 */ }
+        showSpinner(true); setIndeterminate();
+        const voiceIds = [...new Set(blocks.flatMap(b => b.lines.map(l => voiceOf[l.role])))];
+
+        // 第一阶段：从本地 vendors/ 加载语音引擎(~25MB) + 各音色模型(每个约 60MB)。全程离线，无需联网。
+        for (let k = 0; k < voiceIds.length; k++) {
+            const id = voiceIds[k];
+            setIndeterminate();
+            setStatus(`准备中 ${k+1}/${voiceIds.length} · 正在从本地加载语音引擎与音色「${id}」，请稍候…`);
+            await getSession(id, (p) => {
+                if (p && p.total) {
+                    setProg(p.loaded / p.total * 100);
+                    setStatus(`加载音色 ${k+1}/${voiceIds.length}：${id}（${Math.round(p.loaded*100/p.total)}%）`);
+                }
+            });
         }
 
+        // 第二阶段：逐句合成
+        setIndeterminate();
+        setStatus("引擎就绪，开始合成…");
         const total = blocks.reduce((s,b) => s + b.lines.length * (b.kind==="chinese"?1:cfg.repeat), 0);
         let done = 0;
         const parts = []; const timeline = []; let cursor = 0;
@@ -286,6 +366,7 @@ There's a big food chain in nature. It plays an important role in balancing the 
             }
             if (afterPause>0) { const s=silence(afterPause); parts.push(s); cursor+=s.length; }
         }
+        showSpinner(false);
 
         const all = concatFloat(parts);
         const durStr = fmtTime(all.length / SR);
@@ -323,7 +404,9 @@ There's a big food chain in nature. It plays an important role in balancing the 
     }
 
     function setStatus(s){ $("ls-statusText").textContent = s; }
-    function setProg(p){ $("ls-prog").style.width = Math.min(100,Math.max(0,p)) + "%"; }
+    function setProg(p){ const v = Math.min(100, Math.max(0, p)); const el = $("ls-prog"); el.classList.remove("progress-bar-striped","active"); el.style.width = v + "%"; el.textContent = Math.round(v) + "%"; }
+    function setIndeterminate(){ const el = $("ls-prog"); el.classList.add("progress-bar-striped","active"); el.style.width = "100%"; el.textContent = ""; }
+    function showSpinner(on){ $("ls-spinner").style.display = on ? "inline-block" : "none"; }
 
     // ---------- 事件 ----------
     $("ls-sample").onclick = () => { $("ls-text").value = SAMPLE; };
@@ -337,7 +420,7 @@ There's a big food chain in nature. It plays an important role in balancing the 
         } else { $("ls-text").value = await f.text(); }
         setStatus(`已载入 ${f.name}`);
     };
-    $("ls-go").onclick = () => generate().catch(err => { console.error(err); setStatus("出错：" + err.message); $("ls-go").disabled = false; });
+    $("ls-go").onclick = () => generate().catch(err => { console.error(err); showSpinner(false); setProg(0); setStatus("出错：" + err.message); $("ls-go").disabled = false; });
     $("ls-fmt").textContent = window.lamejs ? "（输出 MP3）" : "（输出 WAV）";
 
     loadVoices();
