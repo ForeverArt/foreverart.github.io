@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Landmark } from '@spin/lib/spinAlgorithm'
 
 export interface DownloadProgress {
@@ -101,7 +101,9 @@ export function usePose(
   const initTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const fpsCounterRef = useRef({ frames: 0, lastTime: Date.now() })
 
-  const updateFps = useCallback(() => {
+  // 用 ref 持有 fps 更新逻辑，避免将其列入 useEffect 依赖导致 init() 重复执行
+  const updateFpsRef = useRef<() => void>(() => {})
+  updateFpsRef.current = () => {
     fpsCounterRef.current.frames++
     const now = Date.now()
     const elapsed = now - fpsCounterRef.current.lastTime
@@ -110,7 +112,7 @@ export function usePose(
       setState(s => ({ ...s, fps }))
       fpsCounterRef.current = { frames: 0, lastTime: now }
     }
-  }, [])
+  }
 
   useEffect(() => {
     if (!isVideoReady || !enabled) {
@@ -200,7 +202,7 @@ export function usePose(
             clearTimeout(timeoutId)
             restoreGlobals()
           }
-          updateFps()
+          updateFpsRef.current()
           setState(s => ({
             ...s,
             isLoading: false,
@@ -262,7 +264,9 @@ export function usePose(
       if (rafRef.current) cancelAnimationFrame(rafRef.current)
       if (initTimeoutRef.current) clearTimeout(initTimeoutRef.current)
     }
-  }, [isVideoReady, enabled, videoRef, updateFps])
+    // videoRef 是稳定的 ref 对象，不会变化；updateFpsRef 通过 ref 模式规避依赖
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isVideoReady, enabled])
 
   return state
 }
