@@ -98,6 +98,7 @@ export function usePose(
 
   const poseRef = useRef<unknown>(null)
   const rafRef = useRef<number>(0)
+  const initTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const fpsCounterRef = useRef({ frames: 0, lastTime: Date.now() })
 
   const updateFps = useCallback(() => {
@@ -176,9 +177,29 @@ export function usePose(
           minTrackingConfidence: 0.5,
         })
 
+        // 超时保护：30s 内若从未收到结果则报错
+        let gotFirstResult = false
+        const timeoutId = setTimeout(() => {
+          if (!gotFirstResult && !cancelled) {
+            restoreGlobals()
+            cancelAnimationFrame(rafRef.current)
+            setState(s => ({
+              ...s,
+              isLoading: false,
+              loadingMessage: '',
+              error: '初始化超时，请检查摄像头是否正常或刷新重试',
+            }))
+          }
+        }, 30_000)
+        initTimeoutRef.current = timeoutId
+
         pose.onResults((results: { poseLandmarks?: Landmark[] }) => {
           if (cancelled) return
-          restoreGlobals()
+          if (!gotFirstResult) {
+            gotFirstResult = true
+            clearTimeout(timeoutId)
+            restoreGlobals()
+          }
           updateFps()
           setState(s => ({
             ...s,
@@ -195,8 +216,22 @@ export function usePose(
 
         const sendFrame = async () => {
           if (cancelled) return
-          if (videoRef.current && videoRef.current.readyState >= 2) {
-            await pose.send({ image: videoRef.current })
+          try {
+            if (videoRef.current && videoRef.current.readyState >= 2) {
+              await pose.send({ image: videoRef.current })
+            }
+          } catch (err) {
+            if (!cancelled) {
+              clearTimeout(timeoutId)
+              restoreGlobals()
+              setState(s => ({
+                ...s,
+                isLoading: false,
+                loadingMessage: '',
+                error: err instanceof Error ? err.message : '姿态检测出错',
+              }))
+            }
+            return
           }
           rafRef.current = requestAnimationFrame(sendFrame)
         }
@@ -221,6 +256,7 @@ export function usePose(
     return () => {
       cancelled = true
       if (rafRef.current) cancelAnimationFrame(rafRef.current)
+      if (initTimeoutRef.current) clearTimeout(initTimeoutRef.current)
     }
   }, [isVideoReady, enabled, videoRef, updateFps])
 

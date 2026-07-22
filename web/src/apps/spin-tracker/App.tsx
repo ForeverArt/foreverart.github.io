@@ -11,6 +11,7 @@ export default function App() {
   const [enabled, setEnabled] = useState(false)
   const [thresholds, setThresholds] = useState<SpinThresholds>(DEFAULT_THRESHOLDS)
   const [speechEnabled, setSpeechEnabled] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
 
   const { videoRef, state: cameraState, startCamera, stopCamera, switchCamera } = useCamera()
   const poseState = usePose(videoRef, cameraState.isReady, enabled)
@@ -20,13 +21,37 @@ export default function App() {
     thresholds
   )
 
-  // 进入自动全屏
-  useEffect(() => {
+  // 全屏管理：初次进入 + 监听退出后自动恢复
+  const enterFullscreen = useCallback(() => {
     const el = containerRef.current
-    if (!el) return
-    if (document.fullscreenElement) return
+    if (!el || document.fullscreenElement) return
     el.requestFullscreen?.().catch(() => {})
   }, [])
+
+  const toggleFullscreen = useCallback(() => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.().catch(() => {})
+    } else {
+      enterFullscreen()
+    }
+  }, [enterFullscreen])
+
+  useEffect(() => {
+    enterFullscreen()
+  }, [enterFullscreen])
+
+  useEffect(() => {
+    const onFsChange = () => {
+      const inFs = !!document.fullscreenElement
+      setIsFullscreen(inFs)
+      // 退出全屏后自动重新请求
+      if (!inFs) {
+        setTimeout(() => enterFullscreen(), 300)
+      }
+    }
+    document.addEventListener('fullscreenchange', onFsChange)
+    return () => document.removeEventListener('fullscreenchange', onFsChange)
+  }, [enterFullscreen])
 
   // 语音播报
   const prevStateRef = useRef({
@@ -114,11 +139,13 @@ export default function App() {
         speechEnabled={speechEnabled}
         isRunning={enabled && cameraState.isReady}
         facingMode={cameraState.facingMode}
+        isFullscreen={isFullscreen}
         onStart={handleStart}
         onStop={handleStop}
         onSwitchCamera={() => switchCamera(enabled && cameraState.isReady)}
         onThresholdChange={handleThresholdChange}
         onSpeechToggle={handleSpeechToggle}
+        onToggleFullscreen={toggleFullscreen}
       />
     </div>
   )

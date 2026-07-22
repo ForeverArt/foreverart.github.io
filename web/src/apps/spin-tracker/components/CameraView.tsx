@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Loader2, CameraOff, Camera, CameraOff as StopIcon, FlipHorizontal,
          SlidersHorizontal, X, Volume2, VolumeX, RotateCcw, ArrowUpDown,
-         Move, TrendingUp } from 'lucide-react'
+         Move, TrendingUp, Maximize, Minimize } from 'lucide-react'
 import { SkeletonOverlay } from './SkeletonOverlay'
 import { Badge } from './ui/badge'
 import { Progress } from './ui/progress'
@@ -30,11 +30,13 @@ interface CameraViewProps {
   speechEnabled: boolean
   isRunning: boolean
   facingMode: 'environment' | 'user'
+  isFullscreen: boolean
   onStart: () => void
   onStop: () => void
   onSwitchCamera: () => void
   onThresholdChange: (t: Partial<SpinThresholds>) => void
   onSpeechToggle: (enabled: boolean) => void
+  onToggleFullscreen: () => void
 }
 
 function fmt(b: number) {
@@ -53,7 +55,8 @@ export function CameraView({
   videoRef, isReady, isLoading, loadingMessage, downloadProgress,
   error, landmarks, getHistory, isGood, statusText, statusLevel, fps,
   metrics, scores, feedback, thresholds, speechEnabled, isRunning, facingMode,
-  onStart, onStop, onSwitchCamera, onThresholdChange, onSpeechToggle,
+  isFullscreen, onStart, onStop, onSwitchCamera, onThresholdChange, onSpeechToggle,
+  onToggleFullscreen,
 }: CameraViewProps) {
   const [showSettings, setShowSettings] = useState(false)
   const [showScore, setShowScore] = useState(false)
@@ -98,11 +101,18 @@ export function CameraView({
         </Badge>
       </div>
 
-      {/* ── 右上角：FPS ── */}
-      <div className="absolute top-3 right-3 z-10 pointer-events-none">
-        <div className="bg-black/60 backdrop-blur-sm rounded-full px-2.5 py-1">
+      {/* ── 右上角：FPS + 全屏按钮 ── */}
+      <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
+        <div className="bg-black/60 backdrop-blur-sm rounded-full px-2.5 py-1 pointer-events-none">
           <span className="text-xs font-metric text-white/60">{fps > 0 ? `${fps}fps` : '--'}</span>
         </div>
+        <button
+          onClick={onToggleFullscreen}
+          className="bg-black/60 hover:bg-black/80 backdrop-blur-sm rounded-full p-1.5 text-white/60 hover:text-white/90 transition-colors"
+          title={isFullscreen ? '退出全屏' : '进入全屏'}
+        >
+          {isFullscreen ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
+        </button>
       </div>
 
       {/* ── 左侧：实时指标 HUD（竖排）── */}
