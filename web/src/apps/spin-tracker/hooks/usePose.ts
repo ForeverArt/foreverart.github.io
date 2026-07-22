@@ -128,7 +128,14 @@ export function usePose(
         const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
         if (url.includes('/mediapipe/')) {
           return fetchWithProgress(url, (p) => {
-            if (!cancelled) setState(s => ({ ...s, loadingMessage: '下载模型文件...', downloadProgress: p }))
+            if (!cancelled) {
+              const done = p.total > 0 && p.loaded >= p.total
+              setState(s => ({
+                ...s,
+                loadingMessage: done ? '初始化检测引擎...' : '下载模型文件...',
+                downloadProgress: done ? null : p,
+              }))
+            }
           })
         }
         return origFetch(input, init)
@@ -136,7 +143,14 @@ export function usePose(
       window.fetch = patchedFetch as typeof fetch
 
       xhrInterceptor = (p) => {
-        if (!cancelled) setState(s => ({ ...s, loadingMessage: '下载模型文件...', downloadProgress: p }))
+        if (!cancelled) {
+          const done = p.total > 0 && p.loaded >= p.total
+          setState(s => ({
+            ...s,
+            loadingMessage: done ? '初始化检测引擎...' : '下载模型文件...',
+            downloadProgress: done ? null : p,
+          }))
+        }
       }
       window.XMLHttpRequest = PatchedXHR as unknown as typeof XMLHttpRequest
 
