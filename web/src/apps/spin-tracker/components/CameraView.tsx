@@ -7,6 +7,7 @@ import { Badge } from './ui/badge'
 import { Progress } from './ui/progress'
 import type { Landmark, SpinMetrics, SpinScores, SpinThresholds } from '@spin/lib/spinAlgorithm'
 import type { DownloadProgress } from '@spin/hooks/usePose'
+import { MEDIAPIPE_TOTAL_BYTES } from '@spin/hooks/usePose'
 import { cn } from '@spin/lib/utils'
 
 interface CameraViewProps {
@@ -310,30 +311,36 @@ export function CameraView({
           <Loader2 className="w-10 h-10 text-primary animate-spin" />
           <div className="text-center space-y-1">
             <p className="text-sm text-white/80">{loadingMessage || '加载中...'}</p>
-            {downloadProgress && (
-              <div className="w-64 space-y-1.5">
-                <p className="text-xs text-white/50 font-metric truncate">{downloadProgress.file}</p>
-                <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-primary rounded-full transition-all duration-150"
-                    style={{
-                      width: downloadProgress.total > 0
-                        ? `${Math.min(100, (downloadProgress.loaded / downloadProgress.total) * 100)}%`
-                        : '0%'
-                    }}
-                  />
-                </div>
-                <p className="text-xs text-white/40 font-metric">
-                  {fmt(downloadProgress.loaded)}
-                  {downloadProgress.total > 0 && ` / ${fmt(downloadProgress.total)}`}
-                  {downloadProgress.total > 0 && (
-                    <span className="ml-1.5 text-primary">
-                      {Math.round((downloadProgress.loaded / downloadProgress.total) * 100)}%
-                    </span>
-                  )}
+            <div className="w-64 space-y-1.5">
+              {downloadProgress ? (
+                <>
+                  <p className="text-xs text-white/50 font-metric truncate">{downloadProgress.file}</p>
+                  <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary rounded-full transition-all duration-150"
+                      style={{
+                        width: downloadProgress.total > 0
+                          ? `${Math.min(100, (downloadProgress.loaded / downloadProgress.total) * 100)}%`
+                          : '0%'
+                      }}
+                    />
+                  </div>
+                  <p className="text-xs text-white/40 font-metric">
+                    {fmt(downloadProgress.loaded)}
+                    {downloadProgress.total > 0 && ` / ${fmt(downloadProgress.total)}`}
+                    {downloadProgress.total > 0 && (
+                      <span className="ml-1.5 text-primary">
+                        {Math.round((downloadProgress.loaded / downloadProgress.total) * 100)}%
+                      </span>
+                    )}
+                  </p>
+                </>
+              ) : (
+                <p className="text-xs text-white/40 font-metric text-center">
+                  模型大小约 {fmt(MEDIAPIPE_TOTAL_BYTES)}，首次加载需等待
                 </p>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       )}

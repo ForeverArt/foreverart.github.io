@@ -16,13 +16,16 @@ export interface PoseState {
   fps: number
 }
 
-// 已知 MediaPipe 文件大小（字节），用于无 Content-Length 时的估算
+// 实测各文件字节数（从部署目录量得），SIMD 版和非 SIMD 版浏览器各取其一
 const KNOWN_SIZES: Record<string, number> = {
-  'pose_solution_simd_wasm_bin.wasm': 6_300_000,
-  'pose_solution_wasm_bin.wasm': 6_100_000,
-  'pose_solution_packed_assets.data': 3_100_000,
-  'pose_solution_simd_wasm_bin.data': 1_200_000,
+  'pose_solution_simd_wasm_bin.wasm': 6_104_372,
+  'pose_solution_wasm_bin.wasm':      5_994_571,
+  'pose_solution_packed_assets.data': 2_962_288,
+  'pose_solution_simd_wasm_bin.data': 0,
 }
+
+// 预估总下载量（取 SIMD 路径：wasm + data）
+export const MEDIAPIPE_TOTAL_BYTES = 6_104_372 + 2_962_288 // ~8.6 MB
 
 // 拦截 fetch 以追踪下载进度
 function fetchWithProgress(
@@ -53,6 +56,30 @@ function fetchWithProgress(
     const blob = new Blob(chunks)
     return new Response(blob, { status: res.status, headers: res.headers })
   })
+}
+
+// 拦截 XHR（MediaPipe 内部用 XHR 加载 wasm/data）
+type XhrProgressCallback = (p: DownloadProgress) => void
+let xhrInterceptor: XhrProgressCallback | null = null
+const OrigXHR = window.XMLHttpRequest
+
+class PatchedXHR extends OrigXHR {
+  private _url = ''
+  constructor() {
+    super()
+    this.addEventListener('progress', (e: ProgressEvent) => {
+      if (xhrInterceptor && this._url.includes('/mediapipe/')) {
+        const fileName = this._url.split('/').pop() ?? this._url
+        const total = e.total || KNOWN_SIZES[fileName] || 0
+        xhrInterceptor({ file: fileName, loaded: e.loaded, total })
+      }
+    })
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  open(method: string, url: string | URL, async = true, username?: string | null, password?: string | null): void {
+    this._url = url.toString()
+    super.open(method, url as string, async, username, password)
+  }
 }
 
 export function usePose(
@@ -95,24 +122,29 @@ export function usePose(
     async function init() {
       setState(s => ({ ...s, isLoading: true, loadingMessage: '加载姿态检测模型...', error: null, downloadProgress: null }))
 
-      // 注入进度追踪：在 import 之前覆盖全局 fetch，确保捕获所有下载
+      // 在 import 之前同时拦截 fetch 和 XHR，覆盖所有 MediaPipe 下载方式
       const origFetch = window.fetch.bind(window)
       const patchedFetch = (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
         const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
         if (url.includes('/mediapipe/')) {
           return fetchWithProgress(url, (p) => {
-            if (!cancelled) {
-              setState(s => ({
-                ...s,
-                loadingMessage: '下载模型文件...',
-                downloadProgress: p,
-              }))
-            }
+            if (!cancelled) setState(s => ({ ...s, loadingMessage: '下载模型文件...', downloadProgress: p }))
           })
         }
         return origFetch(input, init)
       }
       window.fetch = patchedFetch as typeof fetch
+
+      xhrInterceptor = (p) => {
+        if (!cancelled) setState(s => ({ ...s, loadingMessage: '下载模型文件...', downloadProgress: p }))
+      }
+      window.XMLHttpRequest = PatchedXHR as unknown as typeof XMLHttpRequest
+
+      const restoreGlobals = () => {
+        window.fetch = origFetch as typeof fetch
+        window.XMLHttpRequest = OrigXHR
+        xhrInterceptor = null
+      }
 
       try {
         const { Pose } = await import('@mediapipe/pose')
@@ -132,8 +164,7 @@ export function usePose(
 
         pose.onResults((results: { poseLandmarks?: Landmark[] }) => {
           if (cancelled) return
-          // 首次有结果时恢复 fetch 并清除进度
-          window.fetch = origFetch as typeof fetch
+          restoreGlobals()
           updateFps()
           setState(s => ({
             ...s,
@@ -158,7 +189,7 @@ export function usePose(
 
         rafRef.current = requestAnimationFrame(sendFrame)
       } catch (err) {
-        window.fetch = origFetch as typeof fetch
+        restoreGlobals()
         if (!cancelled) {
           setState(s => ({
             ...s,
