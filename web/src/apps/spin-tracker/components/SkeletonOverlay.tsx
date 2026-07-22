@@ -39,7 +39,9 @@ export function SkeletonOverlay({ landmarks, getHistory, isGood }: SkeletonOverl
     }
 
     renderAll(ctx, landmarks, getHistory(), canvas.width, canvas.height, isGood)
-  }, [landmarks, getHistory, isGood])
+  // getHistory 读的是 ref，引用稳定，无需列为依赖
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [landmarks, isGood])
 
   return (
     <div ref={containerRef} className="absolute inset-0 pointer-events-none">

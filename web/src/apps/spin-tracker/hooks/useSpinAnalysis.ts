@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import type { Landmark } from '@spin/lib/spinAlgorithm'
 import {
   computeMetrics,
@@ -67,8 +67,8 @@ export function useSpinAnalysis(
     setState({ metrics, scores, status, feedback })
   }, [landmarks, fps, thresholds])
 
-  // 获取帧历史（供 Canvas 渲染用）
-  const getHistory = () => historyRef.current
+  // 获取帧历史（供 Canvas 渲染用）- useCallback 保持引用稳定，避免触发 SkeletonOverlay 无限重渲染
+  const getHistory = useCallback(() => historyRef.current, [])
 
   return { ...state, getHistory }
 }
