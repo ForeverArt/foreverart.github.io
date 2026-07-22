@@ -127,7 +127,15 @@ export default function App() {
       <header className="border-b border-border px-4 py-3 flex items-center justify-between">
         <div>
           <h1 className="text-sm font-semibold tracking-tight">Spin Tracker</h1>
-          <p className="text-[10px] text-muted-foreground">花样滑冰旋转轴心检测</p>
+          <p className="text-[10px] text-muted-foreground">
+            花样滑冰旋转轴心检测
+            <span className="ml-1.5 font-metric opacity-50">
+              {new Date(__BUILD_TIME__).toLocaleString('zh-CN', {
+                year: 'numeric', month: '2-digit', day: '2-digit',
+                hour: '2-digit', minute: '2-digit', hour12: false,
+              })}
+            </span>
+          </p>
         </div>
         <a
           href="/figure-skating-spin-tracker/web/dist/../../../index.html"
