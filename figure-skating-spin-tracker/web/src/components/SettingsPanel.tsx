@@ -1,4 +1,4 @@
-import { Camera, CameraOff, FlipHorizontal, SlidersHorizontal, X } from 'lucide-react'
+import { Camera, CameraOff, FlipHorizontal, SlidersHorizontal, X, Volume2, VolumeX } from 'lucide-react'
 import { Button } from './ui/button'
 import { useState } from 'react'
 import type { SpinThresholds } from '@/lib/spinAlgorithm'
@@ -7,19 +7,23 @@ import { cn } from '@/lib/utils'
 interface SettingsPanelProps {
   isRunning: boolean
   thresholds: SpinThresholds
+  speechEnabled: boolean
   onStart: () => void
   onStop: () => void
   onSwitchCamera: () => void
   onThresholdChange: (t: Partial<SpinThresholds>) => void
+  onSpeechToggle: (enabled: boolean) => void
 }
 
 export function SettingsPanel({
   isRunning,
   thresholds,
+  speechEnabled,
   onStart,
   onStop,
   onSwitchCamera,
   onThresholdChange,
+  onSpeechToggle,
 }: SettingsPanelProps) {
   const [showSettings, setShowSettings] = useState(false)
 
@@ -44,6 +48,17 @@ export function SettingsPanel({
             <FlipHorizontal className="w-4 h-4" />
           </Button>
         )}
+
+        {/* 声音开关 */}
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => onSpeechToggle(!speechEnabled)}
+          title={speechEnabled ? '关闭语音播报' : '开启语音播报'}
+          className={cn(speechEnabled && "border-primary text-primary")}
+        >
+          {speechEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+        </Button>
 
         <Button
           variant="outline"
@@ -83,6 +98,41 @@ export function SettingsPanel({
             unit="rpm"
             onChange={v => onThresholdChange({ minRPM: v })}
           />
+
+          {/* 声音设置说明 */}
+          <div className="pt-1 border-t border-border">
+            <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">语音播报</h3>
+            <div
+              className={cn(
+                "flex items-center justify-between rounded-md border px-3 py-2 cursor-pointer transition-colors",
+                speechEnabled ? "border-primary/40 bg-primary/5" : "border-border"
+              )}
+              onClick={() => onSpeechToggle(!speechEnabled)}
+            >
+              <div className="flex items-center gap-2">
+                {speechEnabled
+                  ? <Volume2 className="w-4 h-4 text-primary" />
+                  : <VolumeX className="w-4 h-4 text-muted-foreground" />
+                }
+                <span className="text-xs">语音播报</span>
+              </div>
+              {/* Toggle 开关 */}
+              <div className={cn(
+                "w-9 h-5 rounded-full transition-colors relative",
+                speechEnabled ? "bg-primary" : "bg-muted"
+              )}>
+                <div className={cn(
+                  "absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform",
+                  speechEnabled ? "translate-x-4" : "translate-x-0.5"
+                )} />
+              </div>
+            </div>
+            {speechEnabled && (
+              <p className="text-[10px] text-muted-foreground mt-1.5 leading-relaxed">
+                播报内容：追踪到目标、目标丢失、轴心稳定、轴心偏左/右/前/后、旋转中心漂移
+              </p>
+            )}
+          </div>
         </div>
       )}
 
