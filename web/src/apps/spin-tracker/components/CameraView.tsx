@@ -83,7 +83,7 @@ export function CameraView({
       )}
 
       {/* ── 顶部状态栏 ── */}
-      <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-3 pt-3 pointer-events-none">
+      <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-3 pt-3 pointer-events-none">
         {/* 录制状态 */}
         <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-sm rounded-full px-2.5 py-1">
           <div className={`w-2 h-2 rounded-full ${isReady ? 'bg-red-500 animate-pulse' : 'bg-muted'}`} />
@@ -106,7 +106,7 @@ export function CameraView({
 
       {/* ── 左侧：实时指标 HUD（竖排）── */}
       {isReady && (
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 flex flex-col gap-2 pointer-events-none">
+        <div className="absolute left-3 top-1/2 z-10 -translate-y-1/2 flex flex-col gap-2 pointer-events-none">
           {[
             { icon: <RotateCcw className="w-3.5 h-3.5" />, label: '转速', value: active ? metrics.rpm.toString() : '--', unit: 'rpm', good: rpmGood },
             { icon: <ArrowUpDown className="w-3.5 h-3.5" />, label: '倾斜', value: active ? Math.abs(metrics.tiltAngle).toFixed(1) : '--', unit: '°', good: tiltGood },
@@ -137,7 +137,7 @@ export function CameraView({
 
       {/* ── 右侧：评分面板（可展开）── */}
       {isReady && (
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col items-end gap-2">
+        <div className="absolute right-3 top-1/2 z-10 -translate-y-1/2 flex flex-col items-end gap-2">
           {/* 总分按钮 */}
           <button
             onClick={() => setShowScore(s => !s)}
@@ -191,7 +191,7 @@ export function CameraView({
       )}
 
       {/* ── 底部控制区 ── */}
-      <div className="absolute bottom-0 left-0 right-0 px-4 pb-safe-4 pb-4">
+      <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-safe-4 pb-4">
         {/* 参数设置面板（向上展开）*/}
         {showSettings && (
           <div className="mb-3 bg-black/80 backdrop-blur-sm border border-white/15 rounded-2xl p-4 space-y-4">
@@ -307,7 +307,7 @@ export function CameraView({
 
       {/* ── 加载中遮罩（含进度）── */}
       {isLoading && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 gap-4 p-6">
+        <div className="absolute inset-0 z-[5] flex flex-col items-center justify-center bg-black/80 gap-4 p-6">
           <Loader2 className="w-10 h-10 text-primary animate-spin" />
           <div className="text-center space-y-1">
             <p className="text-sm text-white/80">{loadingMessage || '加载中...'}</p>
@@ -341,7 +341,7 @@ export function CameraView({
 
       {/* 错误遮罩 */}
       {error && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/85 gap-4 p-6">
+        <div className="absolute inset-0 z-[5] flex flex-col items-center justify-center bg-black/85 gap-4 p-6">
           <CameraOff className="w-12 h-12 text-destructive" />
           <p className="text-sm text-destructive text-center">{error}</p>
           <p className="text-xs text-white/40 text-center">请确保已授权摄像头权限，并使用 HTTPS 访问</p>
@@ -350,7 +350,7 @@ export function CameraView({
 
       {/* 未开始提示 */}
       {!isReady && !error && !isLoading && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 gap-5 pointer-events-none">
+        <div className="absolute inset-0 z-[5] flex flex-col items-center justify-center bg-black/90 gap-5 pointer-events-none">
           <div className="w-20 h-20 rounded-full border-2 border-dashed border-primary/40 flex items-center justify-center">
             <div className="w-10 h-10 rounded-full border border-primary/60" />
           </div>
