@@ -58,7 +58,11 @@ jobs:
           cp index.html /tmp/ci-index.html
           cp 404.html /tmp/ci-404.html
           git fetch origin master
+          # viteStaticCopy 会修改 mediapipe 文件 mtime，导致 git 认为有未暂存变更
+          # rebase 前先 stash，rebase 后产物由 /tmp 覆盖，stash 内容可丢弃
+          git stash --include-untracked || true
           git rebase origin/master
+          git stash drop || true
           # 用本次构建产物覆盖（解决 rebase 后文件不一致问题）
           rm -rf assets mediapipe
           cp -r /tmp/ci-assets assets
