@@ -75,8 +75,8 @@ export default function App() {
 
   const handleStart = useCallback(async () => {
     setEnabled(true)
-    await startCamera('environment')
-  }, [startCamera])
+    await startCamera(cameraState.facingMode)
+  }, [startCamera, cameraState.facingMode])
 
   const handleStop = useCallback(() => {
     setEnabled(false)
@@ -113,9 +113,10 @@ export default function App() {
         thresholds={thresholds}
         speechEnabled={speechEnabled}
         isRunning={enabled && cameraState.isReady}
+        facingMode={cameraState.facingMode}
         onStart={handleStart}
         onStop={handleStop}
-        onSwitchCamera={switchCamera}
+        onSwitchCamera={() => switchCamera(enabled && cameraState.isReady)}
         onThresholdChange={handleThresholdChange}
         onSpeechToggle={handleSpeechToggle}
       />

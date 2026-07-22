@@ -48,9 +48,14 @@ export function useCamera() {
     }
   }, [])
 
-  const switchCamera = useCallback(() => {
+  const switchCamera = useCallback((isRunning: boolean) => {
     const next = state.facingMode === 'environment' ? 'user' : 'environment'
-    startCamera(next)
+    if (isRunning) {
+      startCamera(next)
+    } else {
+      // 未运行时只更新方向偏好，不启动摄像头
+      setState(s => ({ ...s, facingMode: next }))
+    }
   }, [state.facingMode, startCamera])
 
   const stopCamera = useCallback(() => {

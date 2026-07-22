@@ -29,6 +29,7 @@ interface CameraViewProps {
   thresholds: SpinThresholds
   speechEnabled: boolean
   isRunning: boolean
+  facingMode: 'environment' | 'user'
   onStart: () => void
   onStop: () => void
   onSwitchCamera: () => void
@@ -51,7 +52,7 @@ function scoreColor(v: number) {
 export function CameraView({
   videoRef, isReady, isLoading, loadingMessage, downloadProgress,
   error, landmarks, getHistory, isGood, statusText, statusLevel, fps,
-  metrics, scores, feedback, thresholds, speechEnabled, isRunning,
+  metrics, scores, feedback, thresholds, speechEnabled, isRunning, facingMode,
   onStart, onStop, onSwitchCamera, onThresholdChange, onSpeechToggle,
 }: CameraViewProps) {
   const [showSettings, setShowSettings] = useState(false)
@@ -255,14 +256,18 @@ export function CameraView({
             }
           </button>
 
-          {/* 切换摄像头 */}
-          {isRunning && (
-            <button onClick={onSwitchCamera}
-              className="p-3 rounded-2xl bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/10 transition-colors"
-              title="切换摄像头">
-              <FlipHorizontal className="w-5 h-5 text-white/80" />
-            </button>
-          )}
+          {/* 切换摄像头 - 始终显示 */}
+          <button onClick={onSwitchCamera}
+            className={cn(
+              "p-3 rounded-2xl backdrop-blur-sm border transition-colors flex flex-col items-center gap-0.5",
+              facingMode === 'user'
+                ? "bg-primary/20 border-primary/40 text-primary"
+                : "bg-white/10 hover:bg-white/20 border-white/10 text-white/60"
+            )}
+            title={facingMode === 'user' ? '切换到后置摄像头' : '切换到前置摄像头'}>
+            <FlipHorizontal className="w-5 h-5" />
+            <span className="text-[9px] leading-none">{facingMode === 'user' ? '前置' : '后置'}</span>
+          </button>
 
           {/* 语音快捷 */}
           <button
