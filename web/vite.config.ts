@@ -12,6 +12,10 @@ export default defineConfig({
           src: 'node_modules/@mediapipe/pose/*.{js,wasm,binarypb,data}',
           dest: 'mediapipe',
         },
+        {
+          src: 'node_modules/@mediapipe/pose/pose_landmark_full.tflite',
+          dest: 'mediapipe',
+        },
       ],
     }),
   ],
