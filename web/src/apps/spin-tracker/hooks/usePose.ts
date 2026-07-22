@@ -31,11 +31,12 @@ export const MEDIAPIPE_TOTAL_BYTES = 6_104_372 + 2_962_288 // ~8.6 MB
 // 拦截 fetch 以追踪下载进度
 function fetchWithProgress(
   url: string,
-  onProgress: (p: DownloadProgress) => void
+  onProgress: (p: DownloadProgress) => void,
+  fetchImpl: typeof fetch
 ): Promise<Response> {
   const fileName = url.split('/').pop() ?? url
 
-  return fetch(url).then(async (res) => {
+  return fetchImpl(url).then(async (res) => {
     if (!res.ok || !res.body) return res
     const contentLength = Number(res.headers.get('content-length') || 0)
     const total = contentLength || KNOWN_SIZES[fileName] || 0
@@ -140,7 +141,7 @@ export function usePose(
                 downloadProgress: done ? null : p,
               }))
             }
-          })
+          }, origFetch)
         }
         return origFetch(input, init)
       }
