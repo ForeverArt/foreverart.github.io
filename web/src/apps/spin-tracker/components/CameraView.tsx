@@ -369,6 +369,10 @@ export function CameraView({
             <p className="text-base font-medium text-white/80">花样滑冰旋转轴心检测</p>
             <p className="text-xs text-white/40 mt-1.5">点击下方"开始检测"启动摄像头</p>
           </div>
+          <div className="flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-full px-3 py-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-success shrink-0" />
+            <p className="text-[11px] text-white/40">纯本地运行，摄像头画面不会上传至网络</p>
+          </div>
         </div>
       )}
     </div>
