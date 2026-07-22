@@ -82,23 +82,22 @@ export function CameraView({
         <div className="absolute inset-0 pointer-events-none scan-overlay" />
       )}
 
-      {/* ── 顶部状态栏 ── */}
-      <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-3 pt-3 pointer-events-none">
-        {/* 录制状态 */}
+      {/* ── 左上角：录制状态 + 状态 Badge ── */}
+      <div className="absolute top-3 left-3 z-10 flex flex-col items-start gap-1.5 pointer-events-none">
         <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-sm rounded-full px-2.5 py-1">
           <div className={`w-2 h-2 rounded-full ${isReady ? 'bg-red-500 animate-pulse' : 'bg-muted'}`} />
           <span className="text-xs font-metric text-white/80">{isReady ? 'LIVE' : 'OFF'}</span>
         </div>
-
-        {/* 状态 Badge */}
         <Badge
           variant={statusLevel}
           className={`text-xs font-metric ${statusLevel === 'good' ? 'status-pulse-good' : statusLevel === 'warn' ? 'status-pulse-warn' : ''}`}
         >
           {statusText}
         </Badge>
+      </div>
 
-        {/* FPS */}
+      {/* ── 右上角：FPS ── */}
+      <div className="absolute top-3 right-3 z-10 pointer-events-none">
         <div className="bg-black/60 backdrop-blur-sm rounded-full px-2.5 py-1">
           <span className="text-xs font-metric text-white/60">{fps > 0 ? `${fps}fps` : '--'}</span>
         </div>

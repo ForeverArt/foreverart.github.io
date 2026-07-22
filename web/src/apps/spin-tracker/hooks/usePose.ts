@@ -95,31 +95,31 @@ export function usePose(
     async function init() {
       setState(s => ({ ...s, isLoading: true, loadingMessage: '加载姿态检测模型...', error: null, downloadProgress: null }))
 
+      // 注入进度追踪：在 import 之前覆盖全局 fetch，确保捕获所有下载
+      const origFetch = window.fetch.bind(window)
+      const patchedFetch = (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+        const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+        if (url.includes('/mediapipe/')) {
+          return fetchWithProgress(url, (p) => {
+            if (!cancelled) {
+              setState(s => ({
+                ...s,
+                loadingMessage: '下载模型文件...',
+                downloadProgress: p,
+              }))
+            }
+          })
+        }
+        return origFetch(input, init)
+      }
+      window.fetch = patchedFetch as typeof fetch
+
       try {
         const { Pose } = await import('@mediapipe/pose')
 
         const pose = new Pose({
           locateFile: (file: string) => `/mediapipe/${file}`,
         })
-
-        // 注入进度追踪：覆盖全局 fetch（仅在 /mediapipe/ 路径生效）
-        const origFetch = window.fetch.bind(window)
-        const patchedFetch = (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-          const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
-          if (url.includes('/mediapipe/')) {
-            return fetchWithProgress(url, (p) => {
-              if (!cancelled) {
-                setState(s => ({
-                  ...s,
-                  loadingMessage: `下载模型文件...`,
-                  downloadProgress: p,
-                }))
-              }
-            })
-          }
-          return origFetch(input, init)
-        }
-        window.fetch = patchedFetch as typeof fetch
 
         pose.setOptions({
           modelComplexity: 1,
@@ -158,6 +158,7 @@ export function usePose(
 
         rafRef.current = requestAnimationFrame(sendFrame)
       } catch (err) {
+        window.fetch = origFetch as typeof fetch
         if (!cancelled) {
           setState(s => ({
             ...s,
