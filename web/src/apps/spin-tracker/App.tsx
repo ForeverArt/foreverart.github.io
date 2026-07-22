@@ -24,6 +24,7 @@ export default function App() {
   // 全屏管理：用 localStorage 记录偏好，避免手动退出后被强制弹回
   const FS_KEY = 'spin-tracker-fullscreen'
   const fsPreferRef = useRef(localStorage.getItem(FS_KEY) !== 'false')
+  const fsRestoringRef = useRef(false)
 
   const enterFullscreen = useCallback(() => {
     const el = containerRef.current
@@ -46,24 +47,31 @@ export default function App() {
   // 首次进入：按偏好决定是否全屏（默认全屏）
   useEffect(() => {
     if (fsPreferRef.current) enterFullscreen()
-  }, [enterFullscreen])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-  // 监听全屏变化：若是用户主动通过浏览器手势退出（非按钮），也更新偏好
+  // 监听全屏变化，effect 只注册一次，通过 ref 访问最新的 enterFullscreen
+  const enterFullscreenRef = useRef(enterFullscreen)
+  useEffect(() => { enterFullscreenRef.current = enterFullscreen }, [enterFullscreen])
+
   useEffect(() => {
     const onFsChange = () => {
       const inFs = !!document.fullscreenElement
       setIsFullscreen(inFs)
-      if (!inFs) {
-        // 仅当偏好仍为全屏时才认为是"意外退出"并尝试恢复
-        // 若用户刚点过退出按钮，fsPreferRef 已被设为 false，不会恢复
-        if (fsPreferRef.current) {
-          setTimeout(() => enterFullscreen(), 300)
-        }
+      if (!inFs && fsPreferRef.current && !fsRestoringRef.current) {
+        fsRestoringRef.current = true
+        setTimeout(() => {
+          fsRestoringRef.current = false
+          if (fsPreferRef.current && !document.fullscreenElement) {
+            enterFullscreenRef.current()
+          }
+        }, 300)
       }
     }
     document.addEventListener('fullscreenchange', onFsChange)
     return () => document.removeEventListener('fullscreenchange', onFsChange)
-  }, [enterFullscreen])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // 语音播报
   const prevStateRef = useRef({
