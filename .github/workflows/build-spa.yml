@@ -52,9 +52,19 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          # 暂存构建产物，rebase 拉取最新后再恢复，保证 assets 与 index.html 一致
+          cp -r assets /tmp/ci-assets
+          cp -r mediapipe /tmp/ci-mediapipe
+          cp index.html /tmp/ci-index.html
+          cp 404.html /tmp/ci-404.html
+          git fetch origin master
+          git rebase origin/master
+          # 用本次构建产物覆盖（解决 rebase 后文件不一致问题）
+          rm -rf assets mediapipe
+          cp -r /tmp/ci-assets assets
+          cp -r /tmp/ci-mediapipe mediapipe
+          cp /tmp/ci-index.html index.html
+          cp /tmp/ci-404.html 404.html
           git add index.html 404.html assets/ mediapipe/
           git diff --staged --quiet || git commit -m "ci: build spa [skip ci]"
-          git stash --include-untracked || true
-          git pull --rebase origin master
-          git stash pop || true
           git push
