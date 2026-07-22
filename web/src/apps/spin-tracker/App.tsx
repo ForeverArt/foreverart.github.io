@@ -21,7 +21,10 @@ export default function App() {
     thresholds
   )
 
-  // 全屏管理：初次进入 + 监听退出后自动恢复
+  // 全屏管理：用 localStorage 记录偏好，避免手动退出后被强制弹回
+  const FS_KEY = 'spin-tracker-fullscreen'
+  const fsPreferRef = useRef(localStorage.getItem(FS_KEY) !== 'false')
+
   const enterFullscreen = useCallback(() => {
     const el = containerRef.current
     if (!el || document.fullscreenElement) return
@@ -30,23 +33,32 @@ export default function App() {
 
   const toggleFullscreen = useCallback(() => {
     if (document.fullscreenElement) {
+      fsPreferRef.current = false
+      localStorage.setItem(FS_KEY, 'false')
       document.exitFullscreen?.().catch(() => {})
     } else {
+      fsPreferRef.current = true
+      localStorage.setItem(FS_KEY, 'true')
       enterFullscreen()
     }
   }, [enterFullscreen])
 
+  // 首次进入：按偏好决定是否全屏（默认全屏）
   useEffect(() => {
-    enterFullscreen()
+    if (fsPreferRef.current) enterFullscreen()
   }, [enterFullscreen])
 
+  // 监听全屏变化：若是用户主动通过浏览器手势退出（非按钮），也更新偏好
   useEffect(() => {
     const onFsChange = () => {
       const inFs = !!document.fullscreenElement
       setIsFullscreen(inFs)
-      // 退出全屏后自动重新请求
       if (!inFs) {
-        setTimeout(() => enterFullscreen(), 300)
+        // 仅当偏好仍为全屏时才认为是"意外退出"并尝试恢复
+        // 若用户刚点过退出按钮，fsPreferRef 已被设为 false，不会恢复
+        if (fsPreferRef.current) {
+          setTimeout(() => enterFullscreen(), 300)
+        }
       }
     }
     document.addEventListener('fullscreenchange', onFsChange)
