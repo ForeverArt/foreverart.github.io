@@ -5,7 +5,8 @@ on:
     branches: [master]
     paths:
       - 'figure-skating-spin-tracker/web/src/**'
-      - 'figure-skating-spin-tracker/web/package*.json'
+      - 'figure-skating-spin-tracker/web/package.json'
+      - 'figure-skating-spin-tracker/web/yarn.lock'
       - 'figure-skating-spin-tracker/web/vite.config.ts'
       - 'figure-skating-spin-tracker/web/tailwind.config.ts'
       - 'figure-skating-spin-tracker/web/tsconfig*.json'
@@ -29,15 +30,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: figure-skating-spin-tracker/web/package-lock.json
+          cache: 'yarn'
+          cache-dependency-path: figure-skating-spin-tracker/web/yarn.lock
 
       - name: Install dependencies
-        run: npm ci
+        run: yarn install --frozen-lockfile
         working-directory: figure-skating-spin-tracker/web
 
       - name: Build
-        run: npm run build
+        run: yarn build
         working-directory: figure-skating-spin-tracker/web
 
       - name: Commit and push dist
