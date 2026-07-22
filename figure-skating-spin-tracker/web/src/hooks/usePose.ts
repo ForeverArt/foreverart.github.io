@@ -52,7 +52,7 @@ export function usePose(
 
         const pose = new Pose({
           locateFile: (file: string) =>
-            `/figure-skating-spin-tracker/web/dist/mediapipe/${file}`,
+            `/figure-skating-spin-tracker/dist/mediapipe/${file}`,
         })
 
         pose.setOptions({

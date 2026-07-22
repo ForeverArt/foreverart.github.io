@@ -19,7 +19,7 @@ export default defineConfig({
     // 构建时注入时间戳（ISO 字符串），开发时为当前时间
     __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
   },
-  base: '/figure-skating-spin-tracker/web/dist/',
+  base: '/figure-skating-spin-tracker/dist/',
   build: {
     outDir: '../dist',
     emptyOutDir: true,
