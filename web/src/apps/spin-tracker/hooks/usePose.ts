@@ -195,6 +195,32 @@ export function usePose(
         }, 30_000)
         initTimeoutRef.current = timeoutId
 
+        // 严格串行：onResults 触发后再用 RAF 安排下一帧 send，
+        // 避免 send 队列无限累积导致 call stack overflow
+        const scheduleNext = () => {
+          if (cancelled) return
+          rafRef.current = requestAnimationFrame(() => {
+            if (cancelled) return
+            if (videoRef.current && videoRef.current.readyState >= 2) {
+              pose.send({ image: videoRef.current }).catch((err) => {
+                if (!cancelled) {
+                  clearTimeout(timeoutId)
+                  restoreGlobals()
+                  setState(s => ({
+                    ...s,
+                    isLoading: false,
+                    loadingMessage: '',
+                    error: err instanceof Error ? err.message : '姿态检测出错',
+                  }))
+                }
+              })
+            } else {
+              // 视频还没就绪，稍后重试
+              scheduleNext()
+            }
+          })
+        }
+
         pose.onResults((results: { poseLandmarks?: Landmark[] }) => {
           if (cancelled) return
           if (!gotFirstResult) {
@@ -210,39 +236,16 @@ export function usePose(
             downloadProgress: null,
             landmarks: results.poseLandmarks ?? null,
           }))
+          // 处理完当前帧结果后，再安排下一帧
+          scheduleNext()
         })
 
         poseRef.current = pose
 
         setState(s => ({ ...s, loadingMessage: '初始化检测引擎...' }))
 
-        let sending = false
-        const sendFrame = async () => {
-          if (cancelled) return
-          if (!sending && videoRef.current && videoRef.current.readyState >= 2) {
-            sending = true
-            try {
-              await pose.send({ image: videoRef.current })
-            } catch (err) {
-              if (!cancelled) {
-                clearTimeout(timeoutId)
-                restoreGlobals()
-                setState(s => ({
-                  ...s,
-                  isLoading: false,
-                  loadingMessage: '',
-                  error: err instanceof Error ? err.message : '姿态检测出错',
-                }))
-              }
-              return
-            } finally {
-              sending = false
-            }
-          }
-          rafRef.current = requestAnimationFrame(sendFrame)
-        }
-
-        rafRef.current = requestAnimationFrame(sendFrame)
+        // 启动第一帧
+        scheduleNext()
       } catch (err) {
         restoreGlobals()
         if (!cancelled) {
