@@ -246,6 +246,9 @@ export function usePose(
 
         setState(s => ({ ...s, loadingMessage: '初始化检测引擎...' }))
 
+        // 等 WASM 完全初始化后再启动第一帧，避免 abort()
+        await pose.initialize()
+
         // 启动第一帧
         scheduleNext()
       } catch (err) {
