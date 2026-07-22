@@ -1,102 +1,18 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>ForeverArt.github.io</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link href="images/favicon.ico" rel="icon" type="image/x-icon" />
-    <!-- from vendors -->
-    <link rel="stylesheet" href="vendors/font-awesome/css/font-awesome.css">
-    <link rel="stylesheet" href="vendors/bootstrap-3.3.7-dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="vendors/Uikit/css/uikit.css">
-    <link rel="stylesheet" href="vendors/Uikit/css/uikit.almost-flat.css">
-    <link rel="stylesheet" href="vendors/Uikit/expand/uikit.docs.min.css">
-    <link rel="stylesheet" href="vendors/Uikit/expand/docs.css">
-    <!-- self -->
-    <link rel="stylesheet" href="css/main.css">
-    <!-- blog -->
-    <link rel="stylesheet" href="css/blog/blog.css">
-</head>
-<body>
-    <!-- nav -->
-    <nav class="uk-navbar" id="nav-header">
-        <ul class="uk-navbar-nav">
-            <li><a href="index.html"><i class="uk-icon-paper-plane"></i> Blog</a></li>
-            <li><a href="essay.html"><i class="uk-icon-book"></i> Essay</a></li>
-            <li><a href="pages.html"><i class="uk-icon-bookmark"></i> Pages</a></li>
-            <li><a href="notes.html"><i class="uk-icon-pencil-square"></i> Notes</a></li>
-            <li><a href="webrtc-chat.html"><i class="uk-icon-commenting"></i> WebRTC-Chat</a></li>
-            <li><a href="maptalks.html"><i class="uk-icon-map"></i> Maptalks</a></li>
-            <li><a href="aicomp.html"><i class="uk-icon-commenting"></i> AI Comp</a></li>
-            <li><a href="listening.html"><i class="uk-icon-headphones"></i> Listening</a></li>
-            <li><a href="figure-skating-spin-tracker/dist/index.html"><i class="uk-icon-refresh"></i> Spin Tracker</a></li>
-        </ul>
-        <div class="uk-navbar-flip">
-            <ul class="uk-navbar-nav">
-                <li><a href="https://github.com/ForeverArt/foreverart.github.io" target="_blank"><i class="uk-icon-github"></i> Github</a></li>
-                <li><a href="https://github.com/ForeverArt/foreverart.github.io/issues" target="_blank"><i class="uk-icon-cog"></i> Admin</a></li>
-            </ul>
-
-        </div>
-    </nav>
-    <!-- end nav -->
-    <div class="container bs-docs-container">
-        <!-- index.html -->
-        <div class="row" id="app" role="main">
-            <div v-if="!showBlogDetail" class="showBlogs">
-                <div class="col-md-9">
-                    <div class="blogs">
-                        <div v-for="(blogItem, index) in blogs"
-                        v-bind:item="blogItem"
-                        v-bind:index="index"
-                        v-bind:key="blogItem.number"
-                        class="blog shadow1"
-                        @click="chooseDetail(blogItem.number)">
-                            <blog :blog="blogItem"></blog>
-                        </div>
-                    </div>
-                </div>
-                <div v-if="blogs.length" class="visible-md visible-lg col-md-3 shadow2" role="complementary" id="sidebar">
-                    <ul v-for="(blogItem, index) in blogs">
-                        <li><a :id="'link_' + blogItem.number" :href="'#blog_' + blogItem.number" @click="scrollTo('blog_' + blogItem.number)">{{blogItem.title}}</a></li>
-                    </ul>
-                </div>
-            </div>
-            <div v-if="showBlogDetail" class="showBlogDetail">
-                <div class="container">
-                    <blog :blog="currentBlog"><blog>
-                </div>
-            </div>
-        </div>
-        <!-- end index.html -->
-    </div>
-</body>
-
-<!-- template -->
-<!-- index.html -->
-<!-- blog -->
-<template id="blog_t">
-    <article class="uk-article" :id="'blog_' + blog.number">
-        <h1 class="uk-article-title">{{title}}
-            <span v-if="blog.number-1" style="float:right;font-size:1.2vw">
-                <a @click="nextBlog()"><i class="uk-icon-angle-double-down"></i> Skip</a>
-            </span>
-            <span v-else style="float:right;font-size:1.2vw">
-                <a @click="backTop()"><i class="uk-icon-angle-double-up"></i> Top</a>
-            </span>
-        </h1>
-        <p class="uk-article-meta">{{meta}}</p>
-        <hr class="uk-article-divider">
-        <div v-html="html_content"></div>
-    </article>
-</template>
-
-<!-- from vendors -->
-<script type="text/javascript" src="vendors/jquery/jquery-3.2.1.min.js"></script>
-<script type="text/javascript" src="vendors/bootstrap-3.3.7-dist/js/bootstrap.min.js"></script>
-<script type="text/javascript" src="vendors/Uikit/js/uikit.js"></script>
-<script type="text/javascript" src="vendors/vue/vue.js"></script>
-<script src="vendors/markdown-browser-0.6.0-beta1/markdown.min.js" charset="utf-8"></script>
-<!-- index.html -->
-<script type="text/javascript" src="js/main.js"></script>
+<!doctype html>
+<html lang="zh-CN" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content="ForeverArt — 应用集合" />
+    <title>ForeverArt</title>
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="icon" type="image/x-icon" href="/images/favicon.ico" />
+    <script type="module" crossorigin src="/assets/index-6EV2qulz.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DCkOkjZw.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
 </html>

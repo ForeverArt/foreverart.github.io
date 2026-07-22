@@ -1,0 +1,57 @@
+name: Build SPA
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'web/src/**'
+      - 'web/package.json'
+      - 'web/yarn.lock'
+      - 'web/vite.config.ts'
+      - 'web/tailwind.config.ts'
+      - 'web/tsconfig.json'
+      - 'web/tsconfig.app.json'
+      - 'web/index.html'
+      - 'web/postcss.config.js'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn'
+          cache-dependency-path: web/yarn.lock
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+        working-directory: web
+
+      - name: Clean old build artifacts
+        run: rm -rf assets mediapipe
+
+      - name: Build
+        run: yarn build
+        working-directory: web
+
+      - name: Generate 404.html for SPA routing
+        run: cp index.html 404.html
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add index.html 404.html assets/ mediapipe/
+          git diff --staged --quiet || git commit -m "ci: build spa [skip ci]"
+          git push
