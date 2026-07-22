@@ -214,24 +214,28 @@ export function usePose(
 
         setState(s => ({ ...s, loadingMessage: '初始化检测引擎...' }))
 
+        let sending = false
         const sendFrame = async () => {
           if (cancelled) return
-          try {
-            if (videoRef.current && videoRef.current.readyState >= 2) {
+          if (!sending && videoRef.current && videoRef.current.readyState >= 2) {
+            sending = true
+            try {
               await pose.send({ image: videoRef.current })
+            } catch (err) {
+              if (!cancelled) {
+                clearTimeout(timeoutId)
+                restoreGlobals()
+                setState(s => ({
+                  ...s,
+                  isLoading: false,
+                  loadingMessage: '',
+                  error: err instanceof Error ? err.message : '姿态检测出错',
+                }))
+              }
+              return
+            } finally {
+              sending = false
             }
-          } catch (err) {
-            if (!cancelled) {
-              clearTimeout(timeoutId)
-              restoreGlobals()
-              setState(s => ({
-                ...s,
-                isLoading: false,
-                loadingMessage: '',
-                error: err instanceof Error ? err.message : '姿态检测出错',
-              }))
-            }
-            return
           }
           rafRef.current = requestAnimationFrame(sendFrame)
         }
