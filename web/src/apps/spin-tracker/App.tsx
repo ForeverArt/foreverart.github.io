@@ -1,8 +1,10 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useCamera } from '@spin/hooks/useCamera'
+import { useRecording, getVideoExtension } from '@spin/hooks/useRecording'
 import { usePose } from '@spin/hooks/usePose'
 import { useSpinAnalysis } from '@spin/hooks/useSpinAnalysis'
 import { CameraView } from '@spin/components/CameraView'
+import { SavePrompt } from '@spin/components/SavePrompt'
 import {
   DEFAULT_THRESHOLDS,
   isQualityGood,
@@ -10,7 +12,14 @@ import {
 } from '@spin/rules'
 import { speechService } from '@spin/lib/speechService'
 import { playStartBeep, playStopBeep } from '@spin/lib/beepService'
-import { setupHeadsetControl } from '@spin/lib/headsetControl'
+import { setupHeadsetControl, type HeadsetMode } from '@spin/lib/headsetControl'
+import { saveVideoToCameraRoll } from '@spin/lib/videoSave'
+
+function formatTimestamp(): string {
+  const d = new Date()
+  const pad = (n: number) => n.toString().padStart(2, '0')
+  return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`
+}
 
 export default function App() {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -19,13 +28,20 @@ export default function App() {
   const [speechEnabled, setSpeechEnabled] = useState(true)
   const [isFullscreen, setIsFullscreen] = useState(false)
 
-  const { videoRef, state: cameraState, zoom, setZoom, frameRate, setFrameRate, startCamera, stopCamera, switchCamera } = useCamera()
+  const { videoRef, streamRef, state: cameraState, zoom, setZoom, frameRate, setFrameRate, startCamera, stopCamera, switchCamera } = useCamera()
+  const recording = useRecording()
   const poseState = usePose(videoRef, cameraState.isReady, enabled)
   const { metrics, scores, status, feedback, speechEvents, getHistory } = useSpinAnalysis(
     poseState.landmarks,
     poseState.fps,
     thresholds
   )
+
+  // 录制保存相关状态
+  const [savePrompt, setSavePrompt] = useState<{ blob: Blob; filename: string } | null>(null)
+  const [isStopping, setIsStopping] = useState(false)
+  const [isSavingVideo, setIsSavingVideo] = useState(false)
+  const isSavingRef = useRef(false)
 
   const FS_KEY = 'spin-tracker-fullscreen'
   const fsPreferRef = useRef(localStorage.getItem(FS_KEY) !== 'false')
@@ -106,26 +122,95 @@ export default function App() {
     speechService.speak('detection_started')
     setEnabled(true)
     await startCamera(cameraState.facingMode)
-  }, [startCamera, cameraState.facingMode])
+    // 摄像头就绪后开始录制
+    if (recording.isSupported && streamRef.current) {
+      recording.startRecording(streamRef.current)
+    }
+  }, [startCamera, cameraState.facingMode, recording])
 
-  const handleStop = useCallback(() => {
+  const handleStop = useCallback(async () => {
+    setIsStopping(true)
     playStopBeep()
     setEnabled(false)
-    stopCamera()
-    speechService.resetCooldowns()
-    speechService.speak('detection_stopped')
-  }, [stopCamera])
 
-  const headsetRef = useRef({ onStart: handleStart, onStop: handleStop, isRunning: false })
+    // 停止录制并等待最终 Blob（onstop 触发时 resolve）
+    const blob = recording.isSupported
+      ? await recording.stopRecording()
+      : null
+
+    setIsStopping(false)
+
+    if (blob) {
+      // 录制成功 — 显示保存弹窗，保持摄像头运行
+      speechService.resetCooldowns()
+      speechService.speak('save_prompt')
+      const ext = getVideoExtension(blob.type)
+      setSavePrompt({ blob, filename: `spin-${formatTimestamp()}.${ext}` })
+    } else {
+      // 录制不支持或失败 — 降级为原行为
+      speechService.resetCooldowns()
+      speechService.speak('detection_stopped')
+      stopCamera()
+    }
+  }, [recording, stopCamera])
+
+  const handleSave = useCallback(async () => {
+    if (!savePrompt || isSavingRef.current) return
+    isSavingRef.current = true
+    setIsSavingVideo(true)
+    try {
+      const result = await saveVideoToCameraRoll(savePrompt.blob, savePrompt.filename)
+      if (result === 'shared' || result === 'downloaded') {
+        speechService.speak('video_saved')
+        setSavePrompt(null)
+        stopCamera()
+      }
+      // 'cancelled' / 'failed' → 保持弹窗，用户可重试或放弃
+    } finally {
+      isSavingRef.current = false
+      setIsSavingVideo(false)
+    }
+  }, [savePrompt, stopCamera])
+
+  const handleDiscard = useCallback(() => {
+    if (!savePrompt || isSavingRef.current) return
+    speechService.speak('video_discarded')
+    setSavePrompt(null)
+    stopCamera()
+  }, [savePrompt, stopCamera])
+
+  // 耳机控制 ref — 每次依赖变化时更新，setupHeadsetControl 只调用一次
+  const headsetRef = useRef({
+    onStart: handleStart,
+    onStop: handleStop,
+    onSave: handleSave,
+    onDiscard: handleDiscard,
+    isRunning: false,
+    mode: 'idle' as HeadsetMode,
+  })
+
   useEffect(() => {
-    headsetRef.current = { onStart: handleStart, onStop: handleStop, isRunning: enabled && cameraState.isReady }
-  }, [handleStart, handleStop, enabled, cameraState.isReady])
+    const mode: HeadsetMode = savePrompt
+      ? 'save'
+      : (enabled && cameraState.isReady && !isStopping) ? 'detect' : 'idle'
+    headsetRef.current = {
+      onStart: handleStart,
+      onStop: handleStop,
+      onSave: handleSave,
+      onDiscard: handleDiscard,
+      isRunning: enabled && cameraState.isReady,
+      mode,
+    }
+  }, [handleStart, handleStop, handleSave, handleDiscard, enabled, cameraState.isReady, savePrompt, isStopping])
 
   useEffect(() => {
     return setupHeadsetControl({
       onStart: () => { void headsetRef.current.onStart() },
-      onStop: () => headsetRef.current.onStop(),
+      onStop: () => { void headsetRef.current.onStop() },
+      onSave: () => { void headsetRef.current.onSave() },
+      onDiscard: () => { void headsetRef.current.onDiscard() },
       isRunning: () => headsetRef.current.isRunning,
+      getMode: () => headsetRef.current.mode,
     })
   }, [])
 
@@ -134,6 +219,7 @@ export default function App() {
   }, [])
 
   const isGood = isQualityGood(status.level)
+  const headsetSupported = typeof navigator !== 'undefined' && 'mediaSession' in navigator
 
   return (
     <div ref={containerRef} className="relative w-full h-screen overflow-hidden bg-black">
@@ -160,6 +246,7 @@ export default function App() {
         isFullscreen={isFullscreen}
         zoom={zoom}
         frameRate={frameRate}
+        isRecording={recording.isRecording}
         onStart={handleStart}
         onStop={handleStop}
         onSwitchCamera={() => switchCamera(enabled && cameraState.isReady)}
@@ -169,6 +256,15 @@ export default function App() {
         onZoomChange={setZoom}
         onFrameRateChange={setFrameRate}
       />
+      {savePrompt && (
+        <SavePrompt
+          videoBlob={savePrompt.blob}
+          isSaving={isSavingVideo}
+          headsetSupported={headsetSupported}
+          onSave={handleSave}
+          onDiscard={handleDiscard}
+        />
+      )}
     </div>
   )
 }

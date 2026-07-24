@@ -175,5 +175,5 @@ export function useCamera() {
     }
   }, [])
 
-  return { videoRef, state, zoom, setZoom, frameRate, setFrameRate, startCamera, stopCamera, switchCamera }
+  return { videoRef, streamRef, state, zoom, setZoom, frameRate, setFrameRate, startCamera, stopCamera, switchCamera }
 }

@@ -13,6 +13,9 @@ export type SpeechEvent =
   | 'detection_stopped'
   | 'drift_detected'
   | 'speed_drop'
+  | 'save_prompt'
+  | 'video_saved'
+  | 'video_discarded'
 
 const SPEECH_TEXTS: Record<SpeechEvent, string> = {
   tracking_acquired: '已追踪到目标',
@@ -23,6 +26,9 @@ const SPEECH_TEXTS: Record<SpeechEvent, string> = {
   detection_stopped: '检测结束',
   drift_detected:    '旋转中心漂移',
   speed_drop:        '速度下降',
+  save_prompt:       '单击保存，双击放弃',
+  video_saved:       '视频已保存',
+  video_discarded:   '视频已放弃',
 }
 
 const COOLDOWNS: Record<SpeechEvent, number> = {
@@ -34,6 +40,9 @@ const COOLDOWNS: Record<SpeechEvent, number> = {
   detection_stopped: 0,
   drift_detected:    3000,
   speed_drop:        3500,
+  save_prompt:       0,
+  video_saved:       0,
+  video_discarded:   0,
 }
 
 class SpeechService {

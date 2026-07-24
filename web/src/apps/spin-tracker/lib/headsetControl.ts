@@ -1,25 +1,29 @@
 /**
  * 耳机按键控制（Media Session API）
  *
- * 蓝牙/线控耳机的单击按键会被系统映射为媒体播放/暂停事件，
- * 通过 navigator.mediaSession.setActionHandler 捕获：
- * - play  → 开始检测
- * - pause → 结束检测
+ * 蓝牙/线控耳机的按键会被系统映射为媒体事件：
+ * - detect 模式: 单击(play/pause) → 开始/结束检测
+ * - save 模式:   单击(play/pause) → 保存, 双击(nexttrack/previoustrack) → 放弃
  *
  * 前提条件：页面必须有正在播放的媒体，系统才会把耳机按键路由给页面。
  * 实现方式：循环播放一段程序生成的静音 WAV，保持 media session 活跃。
- *
- * 浏览器自动播放策略要求首次播放发生在用户手势内；
- * 耳机按键事件本身即用户手势，故在 handler 中兜底启动静音音频。
  */
+
+export type HeadsetMode = 'detect' | 'save' | 'idle'
 
 export interface HeadsetControlOptions {
   /** 请求开始检测 */
   onStart: () => void
   /** 请求结束检测 */
   onStop: () => void
-  /** 查询当前是否在检测中（决定 play/pause 哪个生效） */
+  /** 请求保存录像 */
+  onSave: () => void
+  /** 请求放弃录像 */
+  onDiscard: () => void
+  /** 查询当前是否在检测中 */
   isRunning: () => boolean
+  /** 查询当前耳机模式 */
+  getMode: () => HeadsetMode
 }
 
 /** 程序生成 0.25s 静音 WAV（8-bit PCM mono 8kHz），返回 blob URL */
@@ -92,18 +96,36 @@ export function setupHeadsetControl(options: HeadsetControlOptions): () => void 
     }
   }
 
+  // play: save 模式 → 保存；detect 模式且未运行 → 开始检测
   ms.setActionHandler('play', () => {
     ensureKeepAlive()
-    if (!options.isRunning()) options.onStart()
+    const mode = options.getMode()
+    if (mode === 'save') {
+      options.onSave()
+    } else if (mode === 'detect' && !options.isRunning()) {
+      options.onStart()
+    }
   })
 
+  // pause: save 模式 → 保存；detect 模式且运行中 → 结束检测
   ms.setActionHandler('pause', () => {
-    if (options.isRunning()) {
+    const mode = options.getMode()
+    if (mode === 'save') {
+      options.onSave()
+    } else if (mode === 'detect' && options.isRunning()) {
       options.onStop()
     } else {
-      // 未在检测时收到 pause：保持静音播放以维持按键通道
       ensureKeepAlive()
     }
+  })
+
+  // 双击（nexttrack/previoustrack）: save 模式 → 放弃
+  ms.setActionHandler('nexttrack', () => {
+    if (options.getMode() === 'save') options.onDiscard()
+  })
+
+  ms.setActionHandler('previoustrack', () => {
+    if (options.getMode() === 'save') options.onDiscard()
   })
 
   // 页面内的首次手势（如点击"开始检测"）也启动静音音频
@@ -114,6 +136,8 @@ export function setupHeadsetControl(options: HeadsetControlOptions): () => void 
   return () => {
     ms.setActionHandler('play', null)
     ms.setActionHandler('pause', null)
+    ms.setActionHandler('nexttrack', null)
+    ms.setActionHandler('previoustrack', null)
     ms.playbackState = 'none'
     window.removeEventListener('click', unlock)
     window.removeEventListener('touchstart', unlock)

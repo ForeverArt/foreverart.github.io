@@ -40,6 +40,7 @@ interface CameraViewProps {
   isFullscreen: boolean
   zoom: ZoomState
   frameRate: FrameRateState
+  isRecording: boolean
   onStart: () => void
   onStop: () => void
   onSwitchCamera: () => void
@@ -67,7 +68,7 @@ export function CameraView({
   error, landmarks, getHistory, isGood, statusText, statusLevel, fps,
   metrics, scores, feedback, thresholds, speechEnabled, isRunning, facingMode,
   isFullscreen, onStart, onStop, onSwitchCamera, onThresholdChange, onSpeechToggle,
-  onToggleFullscreen, zoom, onZoomChange, frameRate, onFrameRateChange,
+  onToggleFullscreen, zoom, onZoomChange, frameRate, onFrameRateChange, isRecording,
 }: CameraViewProps) {
   const [showSettings, setShowSettings] = useState(false)
   const [showScore, setShowScore] = useState(false)
@@ -108,7 +109,7 @@ export function CameraView({
       <div className="absolute top-3 left-3 z-10 flex flex-col items-start gap-1.5 pointer-events-none">
         <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-sm rounded-full px-2.5 py-1">
           <div className={`w-2 h-2 rounded-full ${isReady ? 'bg-red-500 animate-pulse' : 'bg-muted'}`} />
-          <span className="text-xs font-metric text-white/80">{isReady ? 'LIVE' : 'OFF'}</span>
+          <span className="text-xs font-metric text-white/80">{isRecording ? 'REC' : isReady ? 'LIVE' : 'OFF'}</span>
         </div>
         <Badge
           variant={statusLevel}
