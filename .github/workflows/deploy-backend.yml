@@ -1,0 +1,74 @@
+name: Deploy backend to Alibaba Cloud
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'backend/**'
+      - 'backend-dashboard/**'
+      - '.github/workflows/deploy-backend.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+
+      - name: Build backend binary
+        working-directory: backend
+        run: |
+          BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          go build -ldflags "-s -w -X github.com/foreverart/foreverart.github.io/backend/internal/version.BuildTime=${BUILD_TIME}" -o ../foreverart-api ./cmd/server
+          ls -lh ../foreverart-api
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build admin dashboard
+        working-directory: backend-dashboard
+        run: |
+          yarn install --frozen-lockfile
+          yarn build
+
+      - name: Package and transfer
+        env:
+          SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          HOST: ${{ secrets.HOST }}
+        run: |
+          tar czf deploy.tar.gz foreverart-api -C backend-dashboard dist
+          ls -lh deploy.tar.gz
+
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+          scp -i ~/.ssh/deploy_key deploy.tar.gz admin@"$HOST":/tmp/deploy-foreverart.tar.gz
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: admin
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            cd /home/admin/foreverart-backend
+            tar xzf /tmp/deploy-foreverart.tar.gz && rm /tmp/deploy-foreverart.tar.gz
+            git pull origin master
+
+            # nginx 配置：独立 server block，不触碰 onday 的 sites-enabled/default
+            sudo cp backend/nginx.conf /etc/nginx/sites-available/foreverart
+            sudo ln -sf /etc/nginx/sites-available/foreverart /etc/nginx/sites-enabled/foreverart
+            sudo nginx -t && sudo nginx -s reload
+
+            sudo systemctl restart foreverart-api
+            echo "Deployment completed!"

@@ -7,6 +7,7 @@ import (
 )
 
 type Config struct {
+	Host              string
 	Port              string
 	CORSOrigins       []string
 	LLMBaseURL        string
@@ -15,10 +16,12 @@ type Config struct {
 	RequestTimeoutSec int
 	MaxBodyBytes      int64
 	KnowledgeRoot     string
+	AdminPassword     string
 }
 
 func Load() Config {
 	return Config{
+		Host:              os.Getenv("HOST"), // empty = all interfaces; set 127.0.0.1 behind nginx
 		Port:              getenv("PORT", "8080"),
 		CORSOrigins:       splitCSV(getenv("CORS_ORIGINS", "http://localhost:5173,https://foreverart.github.io")),
 		LLMBaseURL:        strings.TrimRight(getenv("LLM_BASE_URL", "https://api.openai.com/v1"), "/"),
@@ -27,6 +30,7 @@ func Load() Config {
 		RequestTimeoutSec: getenvInt("REQUEST_TIMEOUT_SEC", 60),
 		MaxBodyBytes:      int64(getenvInt("MAX_BODY_BYTES", 5*1024*1024)),
 		KnowledgeRoot:     getenv("KNOWLEDGE_ROOT", ""),
+		AdminPassword:     os.Getenv("ADMIN_PASSWORD"), // empty = admin endpoints disabled
 	}
 }
 

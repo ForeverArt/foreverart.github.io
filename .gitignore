@@ -15,6 +15,14 @@ node_modules/
 web/dist/
 web/.vite/
 
+# 构建产物（backend-dashboard 子项目）
+backend-dashboard/dist/
+backend-dashboard/.vite/
+
+# 后端部署产物（CI 生成）
+foreverart-api
+deploy.tar.gz
+
 # 环境变量
 .env
 .env.local

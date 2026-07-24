@@ -1,0 +1,23 @@
+# foreverart-api systemd unit
+# 安装: sudo cp backend/foreverart-api.service /etc/systemd/system/ && sudo systemctl daemon-reload
+[Unit]
+Description=ForeverArt Backend API (spin report service)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=admin
+WorkingDirectory=/home/admin/foreverart-backend
+EnvironmentFile=/home/admin/foreverart-backend/backend/.env
+ExecStart=/home/admin/foreverart-backend/foreverart-api
+Restart=always
+RestartSec=3
+
+# 基本加固（不影响功能的最小集）
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=read-only
+
+[Install]
+WantedBy=multi-user.target
