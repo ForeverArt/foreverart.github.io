@@ -6,6 +6,7 @@ on:
     paths:
       - 'backend/**'
       - 'backend-dashboard/**'
+      - 'landing/**'
       - '.github/workflows/deploy-backend.yml'
 
 jobs:
@@ -65,9 +66,11 @@ jobs:
             tar xzf /tmp/deploy-foreverart.tar.gz && rm /tmp/deploy-foreverart.tar.gz
             git pull origin master
 
-            # nginx 配置：独立 server block，不触碰 onday 的 sites-enabled/default
+            # nginx 配置：独立 server block
             sudo cp backend/nginx.conf /etc/nginx/sites-available/foreverart
             sudo ln -sf /etc/nginx/sites-available/foreverart /etc/nginx/sites-enabled/foreverart
+            sudo cp landing/nginx.conf /etc/nginx/sites-available/foreverart-landing
+            sudo ln -sf /etc/nginx/sites-available/foreverart-landing /etc/nginx/sites-enabled/foreverart-landing
             sudo nginx -t && sudo nginx -s reload
 
             sudo systemctl restart foreverart-api

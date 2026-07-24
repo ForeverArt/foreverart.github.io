@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ForeverArt — AI 驱动的花样滑冰旋转分析平台</title>
+  <meta name="description" content="ForeverArt 利用计算机视觉与 AI 技术，实时分析花滑旋转姿态，提供生物力学评分与智能教练反馈。">
+  <style>
+    /* ===== Design System ===== */
+    :root {
+      --bg-primary: #06080d;
+      --bg-secondary: #0c1018;
+      --bg-card: rgba(15, 23, 42, 0.6);
+      --bg-card-hover: rgba(20, 30, 52, 0.8);
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent-blue: #38bdf8;
+      --accent-cyan: #22d3ee;
+      --accent-purple: #a78bfa;
+      --accent-glow: rgba(56, 189, 248, 0.15);
+      --gradient-hero: linear-gradient(135deg, #0c4a6e 0%, #0f172a 40%, #1e1b4b 100%);
+      --gradient-accent: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+      --gradient-card: linear-gradient(180deg, rgba(56, 189, 248, 0.08) 0%, transparent 100%);
+      --border-subtle: rgba(148, 163, 184, 0.08);
+      --border-glow: rgba(56, 189, 248, 0.25);
+      --shadow-glow: 0 0 60px rgba(56, 189, 248, 0.12);
+      --radius: 12px;
+      --radius-lg: 20px;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', sans-serif;
+      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* ===== Reset & Base ===== */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    /* ===== Layout ===== */
+    .container {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+    section { padding: 96px 0; }
+
+    /* ===== Nav ===== */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      padding: 16px 0;
+      background: rgba(6, 8, 13, 0.8);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    nav .container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .logo {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      background: var(--gradient-accent);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .nav-links {
+      display: flex;
+      gap: 32px;
+      list-style: none;
+    }
+    .nav-links a {
+      font-size: 14px;
+      color: var(--text-secondary);
+      transition: var(--transition);
+    }
+    .nav-links a:hover { color: var(--text-primary); }
+    .nav-cta {
+      font-size: 13px;
+      padding: 8px 20px;
+      border-radius: 8px;
+      background: var(--gradient-accent);
+      color: var(--bg-primary);
+      font-weight: 600;
+      transition: var(--transition);
+    }
+    .nav-cta:hover { opacity: 0.9; transform: translateY(-1px); }
+
+    /* ===== Hero ===== */
+    .hero {
+      position: relative;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      background: var(--gradient-hero);
+      overflow: hidden;
+      padding-top: 80px;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -20%;
+      width: 800px;
+      height: 800px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(56, 189, 248, 0.08) 0%, transparent 70%);
+      animation: pulse 8s ease-in-out infinite;
+    }
+    .hero::after {
+      content: '';
+      position: absolute;
+      bottom: -30%;
+      left: -10%;
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(167, 139, 250, 0.06) 0%, transparent 70%);
+      animation: pulse 10s ease-in-out infinite reverse;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 0.6; }
+      50% { transform: scale(1.15); opacity: 1; }
+    }
+    .hero-content {
+      position: relative;
+      z-index: 2;
+      max-width: 640px;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      border-radius: 100px;
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid var(--border-glow);
+      font-size: 13px;
+      color: var(--accent-blue);
+      margin-bottom: 32px;
+    }
+    .hero h1 {
+      font-size: clamp(40px, 6vw, 64px);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      margin-bottom: 24px;
+    }
+    .hero h1 span {
+      background: var(--gradient-accent);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p {
+      font-size: 18px;
+      color: var(--text-secondary);
+      line-height: 1.7;
+      margin-bottom: 40px;
+      max-width: 520px;
+    }
+    .hero-actions { display: flex; gap: 16px; flex-wrap: wrap; }
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 32px;
+      border-radius: 10px;
+      background: var(--gradient-accent);
+      color: var(--bg-primary);
+      font-size: 15px;
+      font-weight: 600;
+      transition: var(--transition);
+      box-shadow: 0 4px 24px rgba(56, 189, 248, 0.25);
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(56, 189, 248, 0.35); }
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 32px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-primary);
+      font-size: 15px;
+      font-weight: 500;
+      transition: var(--transition);
+    }
+    .btn-secondary:hover { background: rgba(255, 255, 255, 0.1); border-color: var(--border-glow); }
+
+    /* Ice rink decoration in hero */
+    .hero-visual {
+      position: absolute;
+      right: -40px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 500px;
+      height: 500px;
+      z-index: 1;
+    }
+    .spin-ring {
+      position: absolute;
+      border-radius: 50%;
+      border: 1px solid;
+      animation: spin 20s linear infinite;
+    }
+    .spin-ring:nth-child(1) {
+      width: 100%;
+      height: 100%;
+      border-color: rgba(56, 189, 248, 0.12);
+    }
+    .spin-ring:nth-child(2) {
+      width: 75%;
+      height: 75%;
+      top: 12.5%;
+      left: 12.5%;
+      border-color: rgba(34, 211, 238, 0.1);
+      animation-duration: 15s;
+      animation-direction: reverse;
+    }
+    .spin-ring:nth-child(3) {
+      width: 50%;
+      height: 50%;
+      top: 25%;
+      left: 25%;
+      border-color: rgba(167, 139, 250, 0.08);
+      animation-duration: 10s;
+    }
+    .spin-dot {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-blue);
+      box-shadow: 0 0 16px var(--accent-blue);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    /* ===== Section Headers ===== */
+    .section-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent-blue);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 12px;
+    }
+    .section-title {
+      font-size: clamp(28px, 4vw, 40px);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 16px;
+      line-height: 1.2;
+    }
+    .section-desc {
+      font-size: 16px;
+      color: var(--text-secondary);
+      max-width: 560px;
+      line-height: 1.7;
+    }
+    .section-header { margin-bottom: 64px; }
+
+    /* ===== Features Grid ===== */
+    .features { background: var(--bg-secondary); }
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+    .feature-card {
+      padding: 32px;
+      border-radius: var(--radius-lg);
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent-blue), transparent);
+      opacity: 0;
+      transition: var(--transition);
+    }
+    .feature-card:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-glow);
+      transform: translateY(-4px);
+    }
+    .feature-card:hover::before { opacity: 1; }
+    .feature-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      font-size: 20px;
+    }
+    .feature-icon.blue { background: rgba(56, 189, 248, 0.12); }
+    .feature-icon.cyan { background: rgba(34, 211, 238, 0.12); }
+    .feature-icon.purple { background: rgba(167, 139, 250, 0.12); }
+    .feature-card h3 {
+      font-size: 17px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      letter-spacing: -0.01em;
+    }
+    .feature-card p {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+    .feature-metric {
+      display: inline-block;
+      margin-top: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent-blue);
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: rgba(56, 189, 248, 0.08);
+    }
+
+    /* ===== How It Works ===== */
+    .how-it-works { background: var(--bg-primary); }
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 24px;
+      position: relative;
+    }
+    .steps::before {
+      content: '';
+      position: absolute;
+      top: 36px;
+      left: 10%;
+      right: 10%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border-glow), var(--border-glow), transparent);
+    }
+    .step {
+      text-align: center;
+      position: relative;
+    }
+    .step-number {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 24px;
+      font-size: 28px;
+      font-weight: 700;
+      background: var(--bg-card);
+      border: 1px solid var(--border-glow);
+      color: var(--accent-blue);
+      position: relative;
+      z-index: 2;
+    }
+    .step h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .step p {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    /* ===== Highlights ===== */
+    .highlights { background: var(--bg-secondary); }
+    .highlights-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+    }
+    .highlight-card {
+      padding: 40px;
+      border-radius: var(--radius-lg);
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      transition: var(--transition);
+    }
+    .highlight-card:hover {
+      border-color: var(--border-glow);
+      box-shadow: var(--shadow-glow);
+    }
+    .highlight-card .icon {
+      font-size: 32px;
+      margin-bottom: 20px;
+    }
+    .highlight-card h3 {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      letter-spacing: -0.01em;
+    }
+    .highlight-card p {
+      font-size: 15px;
+      color: var(--text-secondary);
+      line-height: 1.7;
+    }
+
+    /* ===== CTA Section ===== */
+    .cta-section {
+      background: var(--bg-primary);
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .cta-section::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(56, 189, 248, 0.06) 0%, transparent 70%);
+    }
+    .cta-content {
+      position: relative;
+      z-index: 2;
+    }
+    .cta-content h2 {
+      font-size: clamp(28px, 4vw, 40px);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 16px;
+    }
+    .cta-content p {
+      font-size: 16px;
+      color: var(--text-secondary);
+      margin-bottom: 36px;
+      max-width: 480px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    /* ===== Footer ===== */
+    footer {
+      padding: 48px 0;
+      border-top: 1px solid var(--border-subtle);
+      background: var(--bg-primary);
+    }
+    .footer-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .footer-content p {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .footer-links {
+      display: flex;
+      gap: 24px;
+      list-style: none;
+    }
+    .footer-links a {
+      font-size: 13px;
+      color: var(--text-muted);
+      transition: var(--transition);
+    }
+    .footer-links a:hover { color: var(--text-secondary); }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 768px) {
+      section { padding: 64px 0; }
+      .nav-links { display: none; }
+      .hero-visual { display: none; }
+      .hero-content { max-width: 100%; }
+      .hero h1 { font-size: 36px; }
+      .hero p { font-size: 16px; }
+      .features-grid { grid-template-columns: 1fr; }
+      .steps {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 32px;
+      }
+      .steps::before { display: none; }
+      .highlights-grid { grid-template-columns: 1fr; }
+      .footer-content { flex-direction: column; gap: 16px; text-align: center; }
+    }
+    @media (max-width: 480px) {
+      .container { padding: 0 16px; }
+      .hero h1 { font-size: 28px; }
+      .steps { grid-template-columns: 1fr; }
+      .hero-actions { flex-direction: column; }
+      .btn-primary, .btn-secondary { justify-content: center; }
+    }
+
+    /* ===== Scroll animations ===== */
+    .fade-in {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+    .fade-in.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+  <!-- Navigation -->
+  <nav>
+    <div class="container">
+      <div class="logo">ForeverArt</div>
+      <ul class="nav-links">
+        <li><a href="#features">分析能力</a></li>
+        <li><a href="#how-it-works">工作原理</a></li>
+        <li><a href="#highlights">技术优势</a></li>
+      </ul>
+      <a href="https://foreverart.github.io" class="nav-cta" target="_blank" rel="noopener">打开应用</a>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-content">
+        <div class="hero-badge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          实时分析 · 离线可用
+        </div>
+        <h1>用 <span>AI</span> 解读<br>每一个旋转</h1>
+        <p>ForeverArt 将计算机视觉与生物力学知识相结合，在浏览器中实时分析花样滑冰旋转姿态，提供专业级评分与智能教练反馈。</p>
+        <div class="hero-actions">
+          <a href="https://foreverart.github.io" class="btn-primary" target="_blank" rel="noopener">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            立即体验
+          </a>
+          <a href="#features" class="btn-secondary">
+            了解更多
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17l9.2-9.2M17 17V7H7"/></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+    <div class="hero-visual" aria-hidden="true">
+      <div class="spin-ring"></div>
+      <div class="spin-ring"></div>
+      <div class="spin-ring"></div>
+      <div class="spin-dot"></div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="features" id="features">
+    <div class="container">
+      <div class="section-header fade-in">
+        <div class="section-label">核心能力</div>
+        <h2 class="section-title">六项生物力学特征分析</h2>
+        <p class="section-desc">基于运动科学文献定义的特征指标，从姿态数据中提取专业级旋转质量评估。</p>
+      </div>
+      <div class="features-grid">
+        <div class="feature-card fade-in">
+          <div class="feature-icon blue">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><path d="M21 12a9 9 0 11-6.219-8.56"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </div>
+          <h3>旋转转速</h3>
+          <p>通过肩部信号零交叉检测精确计算 RPM，评估旋转动力表现。</p>
+          <span class="feature-metric">优秀 ≥ 120 rpm</span>
+        </div>
+        <div class="feature-card fade-in">
+          <div class="feature-icon cyan">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="2"><line x1="12" y1="2" x2="12" y2="22"/><polyline points="8 6 12 2 16 6"/><polyline points="8 18 12 22 16 18"/></svg>
+          </div>
+          <h3>轴心稳定性</h3>
+          <p>3D 脊柱倾斜角度变化分析，量化旋转轴的稳定性程度。</p>
+          <span class="feature-metric">优秀 ≤ 2°</span>
+        </div>
+        <div class="feature-card fade-in">
+          <div class="feature-icon purple">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8" stroke-dasharray="4 4"/></svg>
+          </div>
+          <h3>旋转中心漂移</h3>
+          <p>追踪脚踝中点在旋转过程中的位移，衡量旋转中心的固定程度。</p>
+          <span class="feature-metric">优秀 ≤ 0.08</span>
+        </div>
+        <div class="feature-card fade-in">
+          <div class="feature-icon blue">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+          </div>
+          <h3>质心偏移</h3>
+          <p>髋部与脚踝中点的差异分析，作为身体质心稳定性的代理指标。</p>
+          <span class="feature-metric">身体尺度归一化</span>
+        </div>
+        <div class="feature-card fade-in">
+          <div class="feature-icon cyan">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="2"><path d="M4 20h16"/><path d="M12 4l-4 16"/><path d="M12 4l4 16"/></svg>
+          </div>
+          <h3>身体倾斜</h3>
+          <p>测量平均锥半角，评估旋转时身体偏离垂直轴的程度。</p>
+          <span class="feature-metric">优秀 ≤ 12°</span>
+        </div>
+        <div class="feature-card fade-in">
+          <div class="feature-icon purple">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </div>
+          <h3>角速度衰减</h3>
+          <p>追踪转速下降率，评估旋转维持能力和姿态紧凑度。</p>
+          <span class="feature-metric">优秀 ≤ 15 rpm/s</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works -->
+  <section class="how-it-works" id="how-it-works">
+    <div class="container">
+      <div class="section-header fade-in" style="text-align: center;">
+        <div class="section-label">工作原理</div>
+        <h2 class="section-title">从摄像头到智能报告</h2>
+        <p class="section-desc" style="margin: 0 auto;">完整的分析管线，从实时视频到 AI 解读，一气呵成。</p>
+      </div>
+      <div class="steps">
+        <div class="step fade-in">
+          <div class="step-number">1</div>
+          <h3>实时采集</h3>
+          <p>摄像头实时画面<br>支持前后置与高帧率</p>
+        </div>
+        <div class="step fade-in">
+          <div class="step-number">2</div>
+          <h3>姿态检测</h3>
+          <p>MediaPipe 13 关节点<br>本地推理 · 零上传</p>
+        </div>
+        <div class="step fade-in">
+          <div class="step-number">3</div>
+          <h3>特征计算</h3>
+          <p>生物力学指标提取<br>实时评分与反馈</p>
+        </div>
+        <div class="step fade-in">
+          <div class="step-number">4</div>
+          <h3>AI 报告</h3>
+          <p>LLM 智能解读<br>可溯源的分析报告</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Highlights -->
+  <section class="highlights" id="highlights">
+    <div class="container">
+      <div class="section-header fade-in">
+        <div class="section-label">技术优势</div>
+        <h2 class="section-title">为什么选择 ForeverArt</h2>
+        <p class="section-desc">专为花滑训练场景设计的技术架构，兼顾专业性与易用性。</p>
+      </div>
+      <div class="highlights-grid">
+        <div class="highlight-card fade-in">
+          <div class="icon">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="1.5"><path d="M2 20h20"/><path d="M5 20V8l7-5 7 5v12"/><rect x="9" y="12" width="6" height="8" rx="1"/></svg>
+          </div>
+          <h3>离线优先</h3>
+          <p>核心分析完全在浏览器中运行，视频画面不上传任何服务器。即使在训练场馆网络不佳的环境下，也能流畅使用。</p>
+        </div>
+        <div class="highlight-card fade-in">
+          <div class="icon">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="1.5"><path d="M12 2a10 10 0 0110 10c0 5.523-4.477 10-10 10S2 17.523 2 12"/><path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="1" fill="#22d3ee"/></svg>
+          </div>
+          <h3>实时语音教练</h3>
+          <p>11 种训练事件实时语音播报，支持耳机按键控制。轴心晃动、中心漂移、转速下降 —— 关键瞬间即时反馈。</p>
+        </div>
+        <div class="highlight-card fade-in">
+          <div class="icon">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          </div>
+          <h3>AI 智能报告</h3>
+          <p>LLM 不计算、不改分，只负责解读和叙述。每条结论都可追溯到具体的特征与规则，确保分析透明可信。</p>
+        </div>
+        <div class="highlight-card fade-in">
+          <div class="icon">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          </div>
+          <h3>知识驱动</h3>
+          <p>每个分析特征都对应独立的生物力学文献定义。评分阈值、规则映射、事件引擎 —— 全部建立在运动科学知识之上。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section">
+    <div class="container">
+      <div class="cta-content fade-in">
+        <h2>开始分析你的旋转</h2>
+        <p>打开浏览器，对准摄像头，即刻开始实时姿态分析。无需安装，无需注册。</p>
+        <a href="https://foreverart.github.io" class="btn-primary" target="_blank" rel="noopener">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          打开 ForeverArt
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <div class="footer-content">
+        <p>&copy; 2026 ForeverArt. 花样滑冰旋转分析平台。</p>
+        <ul class="footer-links">
+          <li><a href="https://foreverart.github.io" target="_blank" rel="noopener">Web App</a></li>
+          <li><a href="https://api.foreverart.vip/dashboard/" target="_blank" rel="noopener">Dashboard</a></li>
+          <li><a href="https://github.com/ForeverArt/foreverart.github.io" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scroll animation (minimal JS, no dependencies) -->
+  <script>
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+        }
+      });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+  </script>
+</body>
+</html>
