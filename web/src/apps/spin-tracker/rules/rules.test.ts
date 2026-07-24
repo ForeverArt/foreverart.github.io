@@ -1,96 +1,99 @@
 import { describe, expect, it } from 'vitest'
 import type { SpinMetrics } from '@spin/features'
 import {
-  computeScores,
-  DEFAULT_THRESHOLDS,
-  evaluateSpeechEvents,
-  generateFeedback,
-  getStatusLabel,
-  INITIAL_SPEECH_RULE_STATE,
+  analysisEventsToSpeechKeys,
+  buildDeterministicReport,
+  evaluateAnalysisEvents,
+  evaluateMvpRules,
+  INITIAL_EVENT_STATE,
+  summarizeFeatureSamples,
 } from '@spin/rules'
 
 const spinningStable: SpinMetrics = {
   tiltAngle: 0,
   baselineTilt: 8,
+  inclination: 8,
   tiltWobble: 1,
-  driftRange: 0.01,
+  axisStability: 1,
+  driftRange: 0.05,
+  centerDrift: 0.05,
+  comOffsetProxy: 0.04,
   rpm: 120,
+  speed: 120,
+  angularDeceleration: 5,
+  decelerationAvailable: true,
   armSymmetry: 0.95,
   isSpinning: true,
 }
 
-const spinningUnstable: SpinMetrics = {
-  tiltAngle: 5,
-  baselineTilt: 20,
-  tiltWobble: 8,
-  driftRange: 0.12,
-  rpm: 40,
-  armSymmetry: 0.4,
-  isSpinning: true,
-}
-
-describe('computeScores / getStatusLabel', () => {
-  it('scores stable spin highly and labels good', () => {
-    const scores = computeScores(spinningStable, DEFAULT_THRESHOLDS)
-    expect(scores.overall).toBeGreaterThanOrEqual(80)
-    expect(getStatusLabel(spinningStable, scores).level).toBe('good')
-  })
-
-  it('scores unstable spin poorly and labels bad', () => {
-    const scores = computeScores(spinningUnstable, DEFAULT_THRESHOLDS)
-    expect(scores.overall).toBeLessThan(50)
-    expect(getStatusLabel(spinningUnstable, scores).level).toBe('bad')
-  })
-
-  it('returns idle when not spinning', () => {
-    const metrics = { ...spinningStable, isSpinning: false }
-    const scores = computeScores(metrics)
-    expect(getStatusLabel(metrics, scores).level).toBe('idle')
+describe('evaluateMvpRules', () => {
+  it('grades excellent axis when wobble is low', () => {
+    const features = summarizeFeatureSamples([
+      { featureId: 'spin.axis_stability', value: 1.2, available: true, unit: 'deg' },
+      { featureId: 'spin.center_drift', value: 0.05, available: true, unit: 'body-normalized' },
+      { featureId: 'spin.com_offset_proxy', value: 0.04, available: true, unit: 'body-normalized' },
+      { featureId: 'spin.inclination', value: 10, available: true, unit: 'deg' },
+      { featureId: 'spin.angular_deceleration', value: 8, available: true, unit: 'rpm/s' },
+      { featureId: 'spin.speed', value: 130, available: true, unit: 'rpm' },
+    ])
+    const rules = evaluateMvpRules(features)
+    expect(rules.features['spin.axis_stability'].grade).toBe('excellent')
+    expect(rules.overallScore).toBeGreaterThan(80)
   })
 })
 
-describe('generateFeedback', () => {
-  it('mentions wobble and drift for unstable metrics', () => {
-    const tips = generateFeedback(spinningUnstable, DEFAULT_THRESHOLDS)
-    expect(tips.some(t => t.includes('晃动'))).toBe(true)
-    expect(tips.some(t => t.includes('漂移'))).toBe(true)
-  })
-})
-
-describe('evaluateSpeechEvents', () => {
-  it('emits tracking_acquired once on rising edge', () => {
-    const first = evaluateSpeechEvents(INITIAL_SPEECH_RULE_STATE, {
-      hasLandmarks: true,
-      metrics: spinningStable,
-      statusLevel: 'good',
-      thresholds: DEFAULT_THRESHOLDS,
-    })
-    expect(first.events).toContain('tracking_acquired')
-
-    const second = evaluateSpeechEvents(first.next, {
-      hasLandmarks: true,
-      metrics: spinningStable,
-      statusLevel: 'good',
-      thresholds: DEFAULT_THRESHOLDS,
-    })
-    expect(second.events).not.toContain('tracking_acquired')
-  })
-
-  it('emits axis_wobble when crossing wobble threshold', () => {
+describe('evaluateAnalysisEvents', () => {
+  it('emits wobble and maps to speech keys', () => {
     const prev = {
-      ...INITIAL_SPEECH_RULE_STATE,
+      ...INITIAL_EVENT_STATE,
       hasLandmarks: true,
       isSpinning: true,
-      statusLevel: 'warn' as const,
-      tiltWobble: 2,
-      driftRange: 0.01,
+      lastRpm: 100,
     }
-    const { events } = evaluateSpeechEvents(prev, {
+    const { events } = evaluateAnalysisEvents(prev, {
+      t: 1.2,
       hasLandmarks: true,
-      metrics: { ...spinningStable, tiltWobble: 6 },
-      statusLevel: 'warn',
-      thresholds: DEFAULT_THRESHOLDS,
+      metrics: { ...spinningStable, axisStability: 6, tiltWobble: 6 },
     })
-    expect(events).toContain('axis_wobble')
+    expect(events.some(e => e.type === 'wobble')).toBe(true)
+    expect(analysisEventsToSpeechKeys(events)).toContain('axis_wobble')
+  })
+
+  it('emits speed_drop on sharp RPM decrease', () => {
+    const prev = {
+      ...INITIAL_EVENT_STATE,
+      hasLandmarks: true,
+      isSpinning: true,
+      lastRpm: 120,
+    }
+    const { events } = evaluateAnalysisEvents(prev, {
+      t: 2,
+      hasLandmarks: true,
+      metrics: { ...spinningStable, speed: 80, rpm: 80 },
+    })
+    expect(events.some(e => e.type === 'speed_drop')).toBe(true)
+  })
+})
+
+describe('buildDeterministicReport', () => {
+  it('includes six MVP feature ids in traceability', () => {
+    const features = summarizeFeatureSamples([
+      { featureId: 'spin.axis_stability', value: 2, available: true, unit: 'deg' },
+      { featureId: 'spin.center_drift', value: 0.1, available: true, unit: 'body-normalized' },
+      { featureId: 'spin.com_offset_proxy', value: 0.1, available: true, unit: 'body-normalized' },
+      { featureId: 'spin.inclination', value: 15, available: true, unit: 'deg' },
+      { featureId: 'spin.angular_deceleration', value: 20, available: true, unit: 'rpm/s' },
+      { featureId: 'spin.speed', value: 90, available: true, unit: 'rpm' },
+    ])
+    const rules = evaluateMvpRules(features)
+    const report = buildDeterministicReport({
+      features,
+      rules,
+      events: [],
+      durationSec: 3,
+      processedFrames: 45,
+    })
+    expect(report.traceability.featureIds).toHaveLength(6)
+    expect(report.schemaVersion).toBe('2.0.0')
   })
 })

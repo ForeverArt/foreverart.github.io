@@ -1,30 +1,29 @@
 # Knowledge Base
 
-知识库是本平台的权威语义层。代码与测试必须能追溯到此处。
+知识库是本平台的权威语义层。代码、规则与 LLM 必须可追溯到此处。
 
 ## Structure
 
 ```
 knowledge/
-├── biomechanics/     # 生物力学概念
-├── isu_rules/        # ISU / 规则边界（启发式阈值需标注）
-├── features/spin/    # 旋转 Feature 定义
-└── prompts/          # 离线 LLM Prompt（非实时）
+├── physics/           # 物理基础
+├── biomechanics/      # 生物力学
+├── isu/               # ISU 边界（非自动打分）
+├── features/spin/     # 旋转 Feature 定义
+├── rules/spin/        # 评分阈值与事件规则
+└── prompts/           # 离线 LLM Prompt
 ```
 
-## Feature Doc Template
+## MVP Features
 
-每个 Feature 文档应包含：
-
-- **Definition** — 定义
-- **Importance** — 为何重要
-- **Inputs** — 输入数据
-- **Formula** — 计算公式
-- **Unit** — 输出单位
-- **Validation** — 如何验证
-- **References** — 知识 / 规则 / 论文引用
-- **Status** — `active` | `experimental` | `deprecated`
-- **Feature ID** — 与 TypeScript registry 对齐的稳定 ID
+| ID | Doc |
+|----|-----|
+| `spin.speed` | `features/spin/speed.md` |
+| `spin.axis_stability` | `features/spin/axis.md` |
+| `spin.center_drift` | `features/spin/travel.md` |
+| `spin.com_offset_proxy` | `features/spin/com.md` |
+| `spin.inclination` | `features/spin/inclination.md` |
+| `spin.angular_deceleration` | `features/spin/deceleration.md` |
 
 ## Traceability
 
@@ -32,4 +31,4 @@ knowledge/
 |-------|-----------------|
 | Why | `knowledge/` |
 | What runs | TypeScript contracts + Feature registry |
-| Correctness | Vitest / fixtures |
+| Correctness | Vitest / Go tests / fixtures |

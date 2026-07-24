@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Loader2, CameraOff, Camera, CameraOff as StopIcon, FlipHorizontal,
          SlidersHorizontal, X, Volume2, VolumeX, RotateCcw, ArrowUpDown,
-         Move, TrendingUp, Maximize, Minimize } from 'lucide-react'
+         Move, TrendingUp, Maximize, Minimize, Headphones } from 'lucide-react'
 import { SkeletonOverlay } from './SkeletonOverlay'
 import { Badge } from './ui/badge'
 import { Progress } from './ui/progress'
@@ -70,6 +70,8 @@ export function CameraView({
   const driftGood = metrics.driftRange < thresholds.maxDrift
   const rpmGood = metrics.rpm >= thresholds.minRPM
   const symGood = metrics.armSymmetry > 0.7
+  // 耳机按键控制依赖 Media Session API
+  const headsetSupported = typeof navigator !== 'undefined' && 'mediaSession' in navigator
   const overallColor = scores.overall >= 80 ? 'text-success' : scores.overall >= 50 ? 'text-warning' : 'text-destructive'
 
   return (
@@ -252,6 +254,9 @@ export function CameraView({
             <div className="pt-1 border-t border-white/10 space-y-1">
               <p className="text-[11px] text-white/40">📍 将手机固定于侧面 45°，全身可见</p>
               <p className="text-[11px] text-white/40">💡 需 HTTPS 才能使用摄像头</p>
+              {headsetSupported && (
+                <p className="text-[11px] text-white/40">🎧 连接耳机后，单击耳机按键即可开始/结束检测</p>
+              )}
             </div>
           </div>
         )}
@@ -315,6 +320,16 @@ export function CameraView({
             <SlidersHorizontal className="w-5 h-5" />
           </button>
         </div>
+
+        {/* 耳机控制提示 */}
+        {headsetSupported && (
+          <div className="mt-2 flex items-center justify-center gap-1.5 pointer-events-none">
+            <Headphones className="w-3 h-3 text-white/40" />
+            <span className="text-[10px] text-white/40">
+              耳机单击{isRunning ? '结束' : '开始'}检测
+            </span>
+          </div>
+        )}
       </div>
 
       {/* 十字准星 */}

@@ -1,0 +1,26 @@
+name: Backend tests
+
+on:
+  push:
+    paths:
+      - 'backend/**'
+      - 'knowledge/**'
+      - '.github/workflows/backend-test.yml'
+  pull_request:
+    paths:
+      - 'backend/**'
+      - 'knowledge/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+      - name: Test
+        run: go test ./...

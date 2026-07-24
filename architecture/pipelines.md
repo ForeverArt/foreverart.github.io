@@ -1,39 +1,26 @@
 # Pipelines
 
-## Pipeline A — Realtime Coach (implemented)
+## Pipeline A — Realtime Coach
 
 ```
-Camera
-  → MediaPipe Pose Adapter
-  → PoseFrame
-  → Feature Extraction
+Camera → MediaPipe → PoseFrame → Feature → Rule → Event → HUD / TTS
+```
+
+Realtime TTS consumes Axis / Speed / Travel events only.
+
+## Pipeline B — Offline Upright Spin Analyzer (MVP)
+
+```
+Local mp4
+  → MediaPipePoseProvider
+  → PoseTimeline
+  → Six Feature Engine
   → Rule Engine
-  → UI HUD + TTS
-```
-
-Goals:
-
-- Low latency coaching cues
-- No LLM on the hot path
-- Latency treated as a measurable KPI; no hard 100ms guarantee without benchmarks
-
-## Pipeline B — Offline Analyzer (defined, not implemented)
-
-```
-Video / Pose Source
-  → Feature Extraction
-  → FeatureTimeline + SpinSession
-  → Session Store (future: Go backend or IndexedDB)
+  → Event Engine
+  → Deterministic Report JSON
+  → Go /api/v1/spin-reports
   → Curated Knowledge + LLM
-  → Report
+  → analysis.md
 ```
 
-Goals:
-
-- Deep attribution and coaching narrative
-- Privacy-friendly: prefer Feature Timeline over video retention
-- Reproducible analysis
-
-## Shared Contract
-
-Both pipelines should speak the same `PoseFrame` → Feature → Event language defined in `data-contracts.md`.
+Video never leaves the browser on the default path.

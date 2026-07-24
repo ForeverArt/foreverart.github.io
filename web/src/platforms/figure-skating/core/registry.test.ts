@@ -1,9 +1,10 @@
 import { existsSync } from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { listActiveSpinFeatures, SPIN_FEATURE_REGISTRY } from './registry'
+import { listMvpSpinFeatures, MVP_FEATURE_IDS, SPIN_FEATURE_REGISTRY } from './registry'
 
-const repoRoot = path.resolve(__dirname, '../../../../../')
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../../')
 
 describe('SPIN_FEATURE_REGISTRY', () => {
   it('has unique stable IDs', () => {
@@ -11,23 +12,23 @@ describe('SPIN_FEATURE_REGISTRY', () => {
     expect(new Set(ids).size).toBe(ids.length)
   })
 
-  it('requires unit, version, and knowledge path for every feature', () => {
-    for (const feature of SPIN_FEATURE_REGISTRY) {
-      expect(feature.id).toMatch(/^spin\./)
-      expect(feature.unit.length).toBeGreaterThan(0)
-      expect(feature.version.length).toBeGreaterThan(0)
+  it('defines exactly six MVP features', () => {
+    expect(MVP_FEATURE_IDS).toHaveLength(6)
+    expect(listMvpSpinFeatures().map(f => f.id).sort()).toEqual([...MVP_FEATURE_IDS].sort())
+  })
+
+  it('requires knowledge and rule paths for MVP features', () => {
+    for (const feature of listMvpSpinFeatures()) {
       expect(feature.knowledgePath.startsWith('knowledge/features/spin/')).toBe(true)
+      expect(feature.rulePath?.startsWith('knowledge/rules/spin/')).toBe(true)
+      expect(existsSync(path.join(repoRoot, feature.knowledgePath))).toBe(true)
+      expect(existsSync(path.join(repoRoot, feature.rulePath!))).toBe(true)
     }
   })
 
-  it('points knowledge paths at existing markdown files', () => {
-    for (const feature of SPIN_FEATURE_REGISTRY) {
-      const abs = path.join(repoRoot, feature.knowledgePath)
-      expect(existsSync(abs), `missing ${feature.knowledgePath}`).toBe(true)
-    }
-  })
-
-  it('exposes at least one active feature', () => {
-    expect(listActiveSpinFeatures().length).toBeGreaterThan(0)
+  it('keeps arm symmetry experimental / non-MVP', () => {
+    const arm = SPIN_FEATURE_REGISTRY.find(f => f.id === 'spin.arm_symmetry')
+    expect(arm?.mvp).toBe(false)
+    expect(arm?.status).toBe('experimental')
   })
 })
