@@ -106,12 +106,12 @@ describe('SpinPipeline — 端到端链路验收', () => {
   // ── Schema 结构 ─────────────────────────────────────────────────────────────
 
   describe('FeatureSample schema', () => {
-    it('每帧 tick 返回 5 个 FeatureSample，字段齐全', () => {
+    it('每帧 tick 返回 6 个 FeatureSample，字段齐全', () => {
       const frame = blankFrame()
       withSkeleton(frame)
       const result = pipeline.tick(frame, 30, 0)
 
-      expect(result.samples).toHaveLength(5)
+      expect(result.samples).toHaveLength(6)
 
       for (const s of result.samples) {
         expect(s).toHaveProperty('featureId')
@@ -125,29 +125,30 @@ describe('SpinPipeline — 端到端链路验收', () => {
       }
     })
 
-    it('FeatureSample featureId 覆盖预期的五个 Feature', () => {
+    it('FeatureSample featureId 覆盖预期的六个 Feature', () => {
       const frame = blankFrame()
       withSkeleton(frame)
       const { samples } = pipeline.tick(frame, 30, 0)
       const ids = samples.map(s => s.featureId)
 
+      expect(ids).toContain('spin.speed')
       expect(ids).toContain('spin.axis_stability')
-      expect(ids).toContain('spin.baseline_tilt')
-      expect(ids).toContain('spin.travel')
-      expect(ids).toContain('spin.spin_speed')
-      expect(ids).toContain('spin.arm_symmetry')
+      expect(ids).toContain('spin.center_drift')
+      expect(ids).toContain('spin.com_offset_proxy')
+      expect(ids).toContain('spin.inclination')
+      expect(ids).toContain('spin.angular_deceleration')
     })
 
-    it('axis_stability 单位为 deg，travel 单位为 normalized，spin_speed 单位为 rpm', () => {
+    it('axis_stability 单位为 deg，center_drift 单位为 body-normalized，speed 单位为 rpm', () => {
       const frame = blankFrame()
       withSkeleton(frame)
       const { samples } = pipeline.tick(frame, 30, 0)
       const byId = Object.fromEntries(samples.map(s => [s.featureId, s]))
 
       expect(byId['spin.axis_stability'].unit).toBe('deg')
-      expect(byId['spin.travel'].unit).toBe('normalized')
-      expect(byId['spin.spin_speed'].unit).toBe('rpm')
-      expect(byId['spin.arm_symmetry'].unit).toBe('ratio')
+      expect(byId['spin.center_drift'].unit).toBe('body-normalized')
+      expect(byId['spin.speed'].unit).toBe('rpm')
+      expect(byId['spin.inclination'].unit).toBe('deg')
     })
 
     it('t 值与传入时间戳一致', () => {
@@ -263,10 +264,10 @@ describe('SpinPipeline — 端到端链路验收', () => {
       expect(result.status.level).toBe('good')
     })
 
-    it('spin.spin_speed sample 值 > 0 且合理（30–500 rpm）', () => {
+    it('spin.speed sample 值 > 0 且合理（30–500 rpm）', () => {
       const frames = makeSpinFrames(FRAMES, FPS, RPM, 0)
       const result = feedPipeline(pipeline, frames, FPS)
-      const speedSample = result.samples.find(s => s.featureId === 'spin.spin_speed')!
+      const speedSample = result.samples.find(s => s.featureId === 'spin.speed')!
       expect(speedSample).toBeDefined()
       expect(speedSample.value).toBeGreaterThan(0)
       expect(speedSample.value!).toBeLessThan(500)
@@ -397,7 +398,7 @@ describe('SpinPipeline — 端到端链路验收', () => {
         return f
       })
       const result = feedPipeline(pipeline, staticFrames, FPS)
-      const speedSample = result.samples.find(s => s.featureId === 'spin.spin_speed')!
+      const speedSample = result.samples.find(s => s.featureId === 'spin.speed')!
       expect(speedSample.value).toBe(0)
     })
   })
