@@ -20,16 +20,19 @@ function AppIcon({ icon }: { icon: PlatformApp['icon'] }) {
 export default function PlatformPage() {
   const { platformId } = useParams<{ platformId: string }>()
   const navigate = useNavigate()
-  const platform = platformId ? getPlatform(platformId) : undefined
+
+  // FS domain root (/) has no platformId — default to figure-skating
+  const resolvedId = platformId ?? (IS_FS_DOMAIN ? 'figure-skating' : undefined)
+  const platform = resolvedId ? getPlatform(resolvedId) : undefined
 
   // Cross-domain redirect: FS platform lives on app.foreverart.vip, life tools on hub
   useEffect(() => {
-    if (platformId === 'figure-skating' && !IS_FS_DOMAIN) {
-      window.location.href = fsUrl('/platforms/figure-skating')
-    } else if (platformId === 'life-tools' && IS_FS_DOMAIN) {
+    if (resolvedId === 'figure-skating' && !IS_FS_DOMAIN) {
+      window.location.href = fsUrl('/')
+    } else if (resolvedId === 'life-tools' && IS_FS_DOMAIN) {
       window.location.href = 'https://foreverart.github.io/platforms/life-tools'
     }
-  }, [platformId])
+  }, [resolvedId])
 
   if (!platform) {
     return (
@@ -48,13 +51,15 @@ export default function PlatformPage() {
   return (
     <div className="min-h-screen flex flex-col items-center px-4 py-12">
       <div className="w-full max-w-2xl mb-8">
-        <button
-          onClick={() => navigate('/')}
-          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
-        >
-          <ArrowLeft size={15} />
-          选择平台
-        </button>
+        {!IS_FS_DOMAIN && (
+          <button
+            onClick={() => navigate('/')}
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
+          >
+            <ArrowLeft size={15} />
+            选择平台
+          </button>
+        )}
         <h1 className="text-3xl font-bold tracking-tight text-foreground mb-1">
           {platform.title}
         </h1>

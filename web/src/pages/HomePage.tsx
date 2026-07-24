@@ -10,7 +10,7 @@ function PlatformIcon({ icon }: { icon: Platform['icon'] }) {
 
 /** Which platform lives on the other domain? */
 function getExternalUrl(platformId: string): string | undefined {
-  if (platformId === 'figure-skating' && !IS_FS_DOMAIN) return fsUrl('/platforms/figure-skating')
+  if (platformId === 'figure-skating' && !IS_FS_DOMAIN) return fsUrl('/')
   if (platformId === 'life-tools' && IS_FS_DOMAIN) return 'https://foreverart.github.io/platforms/life-tools'
   return undefined
 }

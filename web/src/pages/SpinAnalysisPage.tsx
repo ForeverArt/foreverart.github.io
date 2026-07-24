@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, FileVideo, Download, Sparkles } from 'lucide-react'
 import type { SpinAnalysis } from '@/platforms/figure-skating/core'
+import { IS_FS_DOMAIN } from '@/lib/domain'
 import {
   downloadJson,
   downloadText,
@@ -15,6 +16,7 @@ import {
 
 export default function SpinAnalysisPage() {
   const navigate = useNavigate()
+  const backTo = IS_FS_DOMAIN ? '/' : '/platforms/figure-skating'
   const abortRef = useRef<AbortController | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const [progress, setProgress] = useState<OfflineProgress | null>(null)
@@ -72,7 +74,7 @@ export default function SpinAnalysisPage() {
     <div className="min-h-screen bg-background text-foreground px-4 py-8">
       <div className="max-w-2xl mx-auto">
         <button
-          onClick={() => navigate('/platforms/figure-skating')}
+          onClick={() => navigate(backTo)}
           className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6"
         >
           <ArrowLeft size={15} />

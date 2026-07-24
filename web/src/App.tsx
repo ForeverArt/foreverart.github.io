@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import HomePage from '@/pages/HomePage'
 import PlatformPage from '@/pages/PlatformPage'
 import ListeningPage from '@/pages/ListeningPage'
@@ -16,7 +16,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={IS_FS_DOMAIN ? <Navigate to="/platforms/figure-skating" replace /> : <HomePage />} />
+        <Route path="/" element={IS_FS_DOMAIN ? <PlatformPage /> : <HomePage />} />
         <Route path="/platforms/:platformId" element={<PlatformPage />} />
 
         {/* Figure skating — on hub domain, redirect to app.foreverart.vip */}
