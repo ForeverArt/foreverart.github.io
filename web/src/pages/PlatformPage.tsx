@@ -1,6 +1,8 @@
+import { useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Headphones, RefreshCw, PersonStanding, Waves } from 'lucide-react'
 import { getPlatform, type PlatformApp } from '@/config/platforms'
+import { IS_FS_DOMAIN, fsUrl } from '@/lib/domain'
 
 function AppIcon({ icon }: { icon: PlatformApp['icon'] }) {
   switch (icon) {
@@ -19,6 +21,15 @@ export default function PlatformPage() {
   const { platformId } = useParams<{ platformId: string }>()
   const navigate = useNavigate()
   const platform = platformId ? getPlatform(platformId) : undefined
+
+  // Cross-domain redirect: FS platform lives on app.foreverart.vip, life tools on hub
+  useEffect(() => {
+    if (platformId === 'figure-skating' && !IS_FS_DOMAIN) {
+      window.location.href = fsUrl('/platforms/figure-skating')
+    } else if (platformId === 'life-tools' && IS_FS_DOMAIN) {
+      window.location.href = 'https://foreverart.github.io/platforms/life-tools'
+    }
+  }, [platformId])
 
   if (!platform) {
     return (

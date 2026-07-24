@@ -1,10 +1,18 @@
 import { useNavigate } from 'react-router-dom'
 import { Headphones, Snowflake } from 'lucide-react'
 import { platforms, type Platform } from '@/config/platforms'
+import { IS_FS_DOMAIN, fsUrl } from '@/lib/domain'
 
 function PlatformIcon({ icon }: { icon: Platform['icon'] }) {
   if (icon === 'life') return <Headphones size={40} strokeWidth={1.5} />
   return <Snowflake size={40} strokeWidth={1.5} />
+}
+
+/** Which platform lives on the other domain? */
+function getExternalUrl(platformId: string): string | undefined {
+  if (platformId === 'figure-skating' && !IS_FS_DOMAIN) return fsUrl('/platforms/figure-skating')
+  if (platformId === 'life-tools' && IS_FS_DOMAIN) return 'https://foreverart.github.io/platforms/life-tools'
+  return undefined
 }
 
 export default function HomePage() {
@@ -23,7 +31,11 @@ export default function HomePage() {
         {platforms.map((platform) => (
           <button
             key={platform.id}
-            onClick={() => navigate(platform.path)}
+            onClick={() => {
+              const ext = getExternalUrl(platform.id)
+              if (ext) { window.location.href = ext; return }
+              navigate(platform.path)
+            }}
             className={`
               group relative flex flex-col items-start gap-4 p-6 rounded-xl
               bg-gradient-to-br ${platform.accent}

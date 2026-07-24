@@ -1,19 +1,30 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { useEffect } from 'react'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import HomePage from '@/pages/HomePage'
 import PlatformPage from '@/pages/PlatformPage'
 import ListeningPage from '@/pages/ListeningPage'
 import SpinTrackerPage from '@/pages/SpinTrackerPage'
 import SpinAnalysisPage from '@/pages/SpinAnalysisPage'
+import { IS_FS_DOMAIN, fsUrl } from '@/lib/domain'
+
+function ExternalRedirect({ url }: { url: string }) {
+  useEffect(() => { window.location.href = url }, [url])
+  return null
+}
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={IS_FS_DOMAIN ? <Navigate to="/platforms/figure-skating" replace /> : <HomePage />} />
         <Route path="/platforms/:platformId" element={<PlatformPage />} />
-        <Route path="/listening" element={<ListeningPage />} />
-        <Route path="/spin-tracker" element={<SpinTrackerPage />} />
-        <Route path="/spin-analysis" element={<SpinAnalysisPage />} />
+
+        {/* Figure skating — on hub domain, redirect to app.foreverart.vip */}
+        <Route path="/spin-tracker" element={IS_FS_DOMAIN ? <SpinTrackerPage /> : <ExternalRedirect url={fsUrl('/spin-tracker')} />} />
+        <Route path="/spin-analysis" element={IS_FS_DOMAIN ? <SpinAnalysisPage /> : <ExternalRedirect url={fsUrl('/spin-analysis')} />} />
+
+        {/* Life tools — on FS domain, redirect to hub */}
+        <Route path="/listening" element={IS_FS_DOMAIN ? <ExternalRedirect url="https://foreverart.github.io/listening" /> : <ListeningPage />} />
       </Routes>
     </BrowserRouter>
   )
