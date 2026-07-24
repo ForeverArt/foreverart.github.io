@@ -27,11 +27,15 @@ export default defineConfig({
   build: {
     outDir: '../',
     emptyOutDir: false,
+    rollupOptions: {
+      external: (id) => id.startsWith('/vendors/'),
+    },
   },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src'),
       '@spin': path.resolve(__dirname, 'src/apps/spin-tracker'),
+      '@listen': path.resolve(__dirname, 'src/apps/listening'),
     },
   },
   test: {

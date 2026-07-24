@@ -8,9 +8,19 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <link rel="icon" type="image/x-icon" href="/images/favicon.ico" />
-    <script type="module" crossorigin src="/assets/index-Dw53kHwB.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-DUbb99Ma.css">
+    <link rel="icon" type="image/x-icon" href="/images/favicon.ico" />
+
+    <script defer src="/vendors/libs/lame.min.js"></script>
+    <script defer src="/vendors/libs/mammoth.browser.min.js"></script>
+    <script type="importmap">
+    {
+      "imports": {
+        "onnxruntime-web": "/vendors/onnxruntime-web/ort.bundle.min.mjs"
+      }
+    }
+    </script>
+    <script type="module" crossorigin src="/assets/index-C1j997Sm.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-C-SG-F1b.css">
   </head>
   <body>
     <div id="root"></div>
