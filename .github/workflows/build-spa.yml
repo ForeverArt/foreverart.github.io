@@ -14,9 +14,9 @@ on:
       - 'web/index.html'
       - 'web/postcss.config.js'
       - '.github/workflows/build-spa.yml'
-  pull_request:
-    paths:
-      - 'web/**'
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -25,6 +25,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -37,8 +39,35 @@ jobs:
         run: yarn install --frozen-lockfile
         working-directory: web
 
+      - name: Clean old build artifacts
+        run: rm -rf assets mediapipe
+
       - name: Build
         env:
           VITE_BACKEND_BASE_URL: https://api.foreverart.vip
         run: yarn build
         working-directory: web
+
+      - name: Generate 404.html for SPA routing
+        run: cp index.html 404.html
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          cp -r assets /tmp/ci-assets
+          cp -r mediapipe /tmp/ci-mediapipe
+          cp index.html /tmp/ci-index.html
+          cp 404.html /tmp/ci-404.html
+          git fetch origin master
+          git stash --include-untracked || true
+          git rebase origin/master
+          git stash drop || true
+          rm -rf assets mediapipe
+          cp -r /tmp/ci-assets assets
+          cp -r /tmp/ci-mediapipe mediapipe
+          cp /tmp/ci-index.html index.html
+          cp /tmp/ci-404.html 404.html
+          git add index.html 404.html assets/ mediapipe/
+          git diff --staged --quiet || git commit -m "ci: build spa [skip ci]"
+          git push

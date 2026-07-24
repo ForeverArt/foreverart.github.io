@@ -46,7 +46,10 @@ jobs:
           VITE_BACKEND_BASE_URL: https://api.foreverart.vip
         run: |
           yarn install --frozen-lockfile
-          yarn build
+          yarn build --outDir dist
+          # mediapipe WASM files were copied to repo root by viteStaticCopy,
+          # need them in web/dist/ for server deployment
+          cp -r ../mediapipe dist/ 2>/dev/null || true
 
       - name: Package and transfer
         env:
