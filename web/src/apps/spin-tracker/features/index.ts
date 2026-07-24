@@ -1,5 +1,6 @@
 export * from './types'
 export * from './math'
+export * from './scale'
 export * from './spine'
 export * from './motion'
 export * from './symmetry'

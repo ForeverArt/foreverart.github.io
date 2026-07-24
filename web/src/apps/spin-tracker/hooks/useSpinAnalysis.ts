@@ -1,13 +1,17 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
-import type { PoseLandmark } from '@/platforms/figure-skating/core'
+import type { AnalysisEvent, PoseLandmark } from '@/platforms/figure-skating/core'
 import {
   createIdlePipelineFrame,
   SpinPipeline,
   type PipelineFrame,
 } from '@spin/pipeline'
 import { DEFAULT_THRESHOLDS, type SpinThresholds } from '@spin/rules'
+import type { SpeechEvent } from '@spin/lib/speechService'
 
-export type SpinAnalysisState = Omit<PipelineFrame, 'samples' | 'history'>
+export type SpinAnalysisState = Pick<
+  PipelineFrame,
+  'metrics' | 'scores' | 'status' | 'feedback' | 'samples' | 'events' | 'speechEvents'
+>
 
 export function useSpinAnalysis(
   landmarks: PoseLandmark[] | null,
@@ -22,6 +26,9 @@ export function useSpinAnalysis(
       scores: idle.scores,
       status: idle.status,
       feedback: idle.feedback,
+      samples: idle.samples,
+      events: idle.events as AnalysisEvent[],
+      speechEvents: idle.speechEvents as SpeechEvent[],
     }
   })
 
@@ -38,6 +45,9 @@ export function useSpinAnalysis(
       scores: frame.scores,
       status: frame.status,
       feedback: frame.feedback,
+      samples: frame.samples,
+      events: frame.events,
+      speechEvents: frame.speechEvents,
     })
   }, [landmarks, fps, thresholds])
 

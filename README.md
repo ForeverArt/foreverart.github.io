@@ -53,35 +53,35 @@ Knowledge → Feature Definition → Feature Extraction → Validation
 | `knowledge/` | 领域知识、Feature 定义、Prompt 模板 |
 | `architecture/` | 平台边界、管线、数据契约 |
 | `web/` | React SPA（平台目录 + 应用） |
-| `backend/` | 可选 Go 后端（首轮未启用） |
+| `backend/` | Go 报告服务（LLM Analyzer） |
+| `PRD.md` | Upright Spin MVP 产品定义 |
 | `listening.html` / `vendors/` | 遗留 Listening 静态页 |
 
 ## Platforms
 
 - **生活工具平台** → Listening
-- **花滑分析平台** → Spin Tracker（旋转分析）；跳跃 / 滑行分析待开放
+- **花滑分析平台** → Spin Tracker（实时）+ Upright Spin 离线分析（MVP）；跳跃 / 滑行待开放
 
 ## Pipelines
 
-### Realtime Coach（当前）
+### Realtime Coach
 
-`Camera → Pose Adapter → Feature → Rule → UI / TTS`
+`Camera → Pose Adapter → Feature → Rule → Event → UI / TTS`
 
-- 低延迟，浏览器内完成
-- **不**接入 LLM
+- 仅 Axis / Speed / Travel 语音；**不**接入 LLM
 
-### Offline Analyzer（后续）
+### Offline Analyzer（MVP）
 
-`Video / Pose Source → Feature Timeline → Session Store → Curated Knowledge + LLM → Report`
+`Local mp4 → Pose → Feature → Rule → Event → Report JSON → Go LLM → analysis.md`
 
-- LLM 只消费标准化 Feature Timeline / Session，不直接吃视频
+- 视频不上传；LLM 只解释 deterministic Report JSON
 
 ## Backend Convention
 
-- 实时姿态检测、特征提取、规则判定、TTS 反馈留在浏览器端。
-- 一旦需要服务端能力（会话持久化、多设备同步、离线报告编排、LLM 代理、鉴权等），一律在 [`backend/`](backend/) 用 **Go** 实现。
-- 前端默认只提交标准化 `FeatureTimeline` / `SpinSession` JSON，不把视频或 MediaPipe 原始帧作为默认服务端输入。
-- 首轮仅保留占位说明，不引入 HTTP API、数据库或部署流程。
+- 实时链路留在浏览器端
+- 离线 AI 报告在 [`backend/`](backend/) 用 **Go** 实现（OpenAI-compatible Provider）
+- 默认只提交 Report JSON，不上传视频/姿态帧
+- 密钥仅服务端环境变量，禁止写入 Vite bundle
 
 ## Development
 

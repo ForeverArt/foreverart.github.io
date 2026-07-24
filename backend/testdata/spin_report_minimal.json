@@ -1,0 +1,50 @@
+{
+  "schemaVersion": "2.0.0",
+  "report": {
+    "schemaVersion": "2.0.0",
+    "skill": "upright_spin",
+    "summary": {
+      "overallScore": 86,
+      "overallGrade": "good",
+      "durationSec": 4.2,
+      "processedFrames": 50,
+      "warnings": []
+    },
+    "features": {
+      "spin.axis_stability": { "featureId": "spin.axis_stability", "unit": "deg", "last": 1.8, "availableRatio": 1 },
+      "spin.speed": { "featureId": "spin.speed", "unit": "rpm", "last": 110, "availableRatio": 1 }
+    },
+    "rules": {
+      "schemaVersion": "2.0.0",
+      "overallScore": 86,
+      "overallGrade": "good",
+      "features": {},
+      "weights": {}
+    },
+    "events": [],
+    "traceability": {
+      "knowledgeRefs": [
+        "knowledge/features/spin/axis.md",
+        "knowledge/features/spin/speed.md"
+      ],
+      "ruleRefs": [
+        "knowledge/rules/spin/axis.md",
+        "knowledge/rules/spin/speed.md"
+      ],
+      "featureIds": [
+        "spin.speed",
+        "spin.axis_stability",
+        "spin.center_drift",
+        "spin.com_offset_proxy",
+        "spin.inclination",
+        "spin.angular_deceleration"
+      ]
+    }
+  },
+  "meta": {
+    "spinId": "demo-001",
+    "athlete": "anonymous",
+    "skill": "upright_spin",
+    "source": "synthetic"
+  }
+}

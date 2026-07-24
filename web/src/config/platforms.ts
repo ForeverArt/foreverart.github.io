@@ -56,11 +56,21 @@ export const platforms: Platform[] = [
       {
         id: 'spin-tracker',
         title: 'Spin Tracker',
-        subtitle: '旋转实时分析',
-        description: '摄像头 + 姿态适配器实时分析轴稳定、漂移、转速与对称性，提供评分与语音反馈。',
+        subtitle: '旋转实时教练',
+        description: '摄像头实时分析轴稳定、漂移与转速，提供 TTS 反馈（Axis / Speed / Travel）。',
         path: '/spin-tracker',
         status: 'active',
         accent: 'from-emerald-500/20 to-green-600/10 border-emerald-500/30 hover:border-emerald-400/60',
+        icon: 'refresh',
+      },
+      {
+        id: 'spin-analysis',
+        title: 'Upright Spin 离线分析',
+        subtitle: 'Offline Analysis MVP',
+        description: '本地 mp4 → Feature → Rule → Event → Report JSON →（可选）Go LLM 生成 analysis.md。',
+        path: '/spin-analysis',
+        status: 'active',
+        accent: 'from-teal-500/20 to-cyan-600/10 border-teal-500/30 hover:border-teal-400/60',
         icon: 'refresh',
       },
       {

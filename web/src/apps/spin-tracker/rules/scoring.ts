@@ -18,17 +18,18 @@ export const DEFAULT_SCORES: SpinScores = {
   overall: 100,
 }
 
+/** Realtime HUD scores — still derived from metrics for coach UI. */
 export function computeScores(
   metrics: SpinMetrics,
   thresholds: SpinThresholds = DEFAULT_THRESHOLDS
 ): SpinScores {
   const wobbleScore = clamp(
-    100 - (metrics.tiltWobble / thresholds.maxWobbleDeg) * 100,
+    100 - (metrics.axisStability / thresholds.maxWobbleDeg) * 100,
     0, 100
   )
 
   const driftScore = clamp(
-    100 - (metrics.driftRange / thresholds.maxDrift) * 100,
+    100 - (metrics.centerDrift / thresholds.maxDrift) * 100,
     0, 100
   )
 

@@ -3,6 +3,7 @@ import HomePage from '@/pages/HomePage'
 import PlatformPage from '@/pages/PlatformPage'
 import ListeningPage from '@/pages/ListeningPage'
 import SpinTrackerPage from '@/pages/SpinTrackerPage'
+import SpinAnalysisPage from '@/pages/SpinAnalysisPage'
 
 export default function App() {
   return (
@@ -12,6 +13,7 @@ export default function App() {
         <Route path="/platforms/:platformId" element={<PlatformPage />} />
         <Route path="/listening" element={<ListeningPage />} />
         <Route path="/spin-tracker" element={<SpinTrackerPage />} />
+        <Route path="/spin-analysis" element={<SpinAnalysisPage />} />
       </Routes>
     </BrowserRouter>
   )

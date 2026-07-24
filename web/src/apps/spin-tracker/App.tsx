@@ -5,8 +5,6 @@ import { useSpinAnalysis } from '@spin/hooks/useSpinAnalysis'
 import { CameraView } from '@spin/components/CameraView'
 import {
   DEFAULT_THRESHOLDS,
-  evaluateSpeechEvents,
-  INITIAL_SPEECH_RULE_STATE,
   isQualityGood,
   type SpinThresholds,
 } from '@spin/rules'
@@ -23,7 +21,7 @@ export default function App() {
 
   const { videoRef, state: cameraState, zoom, setZoom, startCamera, stopCamera, switchCamera } = useCamera()
   const poseState = usePose(videoRef, cameraState.isReady, enabled)
-  const { metrics, scores, status, feedback, getHistory } = useSpinAnalysis(
+  const { metrics, scores, status, feedback, speechEvents, getHistory } = useSpinAnalysis(
     poseState.landmarks,
     poseState.fps,
     thresholds
@@ -81,20 +79,22 @@ export default function App() {
     speechService.setEnabled(true)
   }, [])
 
-  const speechStateRef = useRef(INITIAL_SPEECH_RULE_STATE)
-
   useEffect(() => {
     if (!speechEnabled) return
-    const hasLandmarks = poseState.landmarks !== null && poseState.landmarks.length > 0
-    const { events, next } = evaluateSpeechEvents(speechStateRef.current, {
-      hasLandmarks,
-      metrics,
-      statusLevel: status.level,
-      thresholds,
-    })
-    for (const event of events) speechService.speak(event)
-    speechStateRef.current = next
-  }, [speechEnabled, poseState.landmarks, metrics, status.level, thresholds])
+    for (const event of speechEvents) {
+      // Realtime coach MVP: Axis / Speed / Travel (+ tracking)
+      if (
+        event === 'axis_stable'
+        || event === 'axis_wobble'
+        || event === 'drift_detected'
+        || event === 'speed_drop'
+        || event === 'tracking_acquired'
+        || event === 'tracking_lost'
+      ) {
+        speechService.speak(event)
+      }
+    }
+  }, [speechEnabled, speechEvents])
 
   const handleSpeechToggle = useCallback((v: boolean) => {
     setSpeechEnabled(v)
@@ -114,7 +114,6 @@ export default function App() {
     stopCamera()
     speechService.resetCooldowns()
     speechService.speak('detection_stopped')
-    speechStateRef.current = { ...INITIAL_SPEECH_RULE_STATE }
   }, [stopCamera])
 
   const headsetRef = useRef({ onStart: handleStart, onStop: handleStop, isRunning: false })
