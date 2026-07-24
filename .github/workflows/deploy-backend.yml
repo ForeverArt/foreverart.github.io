@@ -6,6 +6,7 @@ on:
     paths:
       - 'backend/**'
       - 'backend-dashboard/**'
+      - 'web/**'
       - 'landing/**'
       - '.github/workflows/deploy-backend.yml'
 
@@ -39,12 +40,20 @@ jobs:
           yarn install --frozen-lockfile
           yarn build
 
+      - name: Build SPA
+        working-directory: web
+        env:
+          VITE_BACKEND_BASE_URL: https://api.foreverart.vip
+        run: |
+          yarn install --frozen-lockfile
+          yarn build
+
       - name: Package and transfer
         env:
           SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           HOST: ${{ secrets.HOST }}
         run: |
-          tar czf deploy.tar.gz foreverart-api -C backend-dashboard dist
+          tar czf deploy.tar.gz foreverart-api backend-dashboard/dist web/dist
           ls -lh deploy.tar.gz
 
           mkdir -p ~/.ssh
@@ -71,6 +80,8 @@ jobs:
             sudo ln -sf /etc/nginx/sites-available/foreverart /etc/nginx/sites-enabled/foreverart
             sudo cp landing/nginx.conf /etc/nginx/sites-available/foreverart-landing
             sudo ln -sf /etc/nginx/sites-available/foreverart-landing /etc/nginx/sites-enabled/foreverart-landing
+            sudo cp web/nginx.conf /etc/nginx/sites-available/foreverart-app
+            sudo ln -sf /etc/nginx/sites-available/foreverart-app /etc/nginx/sites-enabled/foreverart-app
             sudo nginx -t && sudo nginx -s reload
 
             sudo systemctl restart foreverart-api

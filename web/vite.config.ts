@@ -25,8 +25,8 @@ export default defineConfig({
   },
   base: '/',
   build: {
-    outDir: '../',
-    emptyOutDir: false,
+    outDir: 'dist',
+    emptyOutDir: true,
     rollupOptions: {
       external: (id) => id.startsWith('/vendors/'),
     },
