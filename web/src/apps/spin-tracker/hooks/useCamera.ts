@@ -76,7 +76,17 @@ export function useCamera() {
         await videoRef.current.play()
         setState(s => ({ ...s, isReady: true }))
         const track = stream.getVideoTracks()[0]
-        if (track) setZoomState(readZoomState(track))
+        if (track) {
+          const zs = readZoomState(track)
+          // 设备支持广角（zoom.min < 1）时，启动即主动切到广角端
+          if (zs.supported && zs.min < 1) {
+            try {
+              await track.applyConstraints({ advanced: [{ zoom: zs.min } as MediaTrackConstraintSet] })
+              zs.current = zs.min
+            } catch { /* 部分设备 apply 可能失败，回退到设备当前值 */ }
+          }
+          setZoomState(zs)
+        }
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : '无法访问摄像头'
