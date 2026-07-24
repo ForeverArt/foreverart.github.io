@@ -5,7 +5,11 @@ import { Loader2, CameraOff, Camera, CameraOff as StopIcon, FlipHorizontal,
 import { SkeletonOverlay } from './SkeletonOverlay'
 import { Badge } from './ui/badge'
 import { Progress } from './ui/progress'
-import type { Landmark, SpinMetrics, SpinScores, SpinThresholds } from '@spin/lib/spinAlgorithm'
+import type { PoseLandmark } from '@/platforms/figure-skating/core'
+import type { SpinMetrics } from '@spin/features'
+import type { SpinScores, SpinThresholds } from '@spin/rules'
+
+type Landmark = PoseLandmark
 import type { DownloadProgress } from '@spin/hooks/usePose'
 import { MEDIAPIPE_TOTAL_BYTES } from '@spin/hooks/usePose'
 import { cn } from '@spin/lib/utils'
@@ -62,7 +66,7 @@ export function CameraView({
   const [showScore, setShowScore] = useState(false)
 
   const active = metrics.isSpinning
-  const tiltGood = Math.abs(metrics.tiltAngle) < thresholds.maxTiltDeg
+  const wobbleGood = metrics.tiltWobble < thresholds.maxWobbleDeg
   const driftGood = metrics.driftRange < thresholds.maxDrift
   const rpmGood = metrics.rpm >= thresholds.minRPM
   const symGood = metrics.armSymmetry > 0.7
@@ -79,7 +83,11 @@ export function CameraView({
 
       {/* 骨骼叠加层 */}
       {landmarks && (
-        <SkeletonOverlay landmarks={landmarks} getHistory={getHistory} isGood={isGood} />
+        <SkeletonOverlay
+          landmarks={landmarks}
+          getHistory={getHistory}
+          isGood={isGood}
+        />
       )}
 
       {/* 扫描线效果 */}
@@ -120,7 +128,7 @@ export function CameraView({
         <div className="absolute left-3 top-1/2 z-10 -translate-y-1/2 flex flex-col gap-2 pointer-events-none">
           {[
             { icon: <RotateCcw className="w-3.5 h-3.5" />, label: '转速', value: active ? metrics.rpm.toString() : '--', unit: 'rpm', good: rpmGood },
-            { icon: <ArrowUpDown className="w-3.5 h-3.5" />, label: '倾斜', value: active ? Math.abs(metrics.tiltAngle).toFixed(1) : '--', unit: '°', good: tiltGood },
+            { icon: <ArrowUpDown className="w-3.5 h-3.5" />, label: '晃动', value: active ? metrics.tiltWobble.toFixed(1) : '--', unit: '°', good: wobbleGood },
             { icon: <Move className="w-3.5 h-3.5" />, label: '漂移', value: active ? (metrics.driftRange * 100).toFixed(1) : '--', unit: '%', good: driftGood },
             { icon: <TrendingUp className="w-3.5 h-3.5" />, label: '对称', value: active ? Math.round(metrics.armSymmetry * 100).toString() : '--', unit: '%', good: symGood },
           ].map(m => (
@@ -172,7 +180,7 @@ export function CameraView({
                 { label: '稳定性', value: scores.stability },
                 { label: '对称性', value: scores.symmetry },
                 { label: '漂移', value: scores.drift },
-                { label: '倾斜', value: scores.tilt },
+                { label: '晃动', value: scores.tilt },
               ].map(row => (
                 <div key={row.label} className="flex items-center gap-2">
                   <span className="text-[10px] text-white/50 w-10 shrink-0">{row.label}</span>
@@ -213,8 +221,8 @@ export function CameraView({
               </button>
             </div>
 
-            <SliderRow label="最大倾斜角" value={thresholds.maxTiltDeg} min={1} max={15} step={0.5} unit="°"
-              onChange={v => onThresholdChange({ maxTiltDeg: v })} />
+            <SliderRow label="最大晃动角" value={thresholds.maxWobbleDeg} min={1} max={15} step={0.5} unit="°"
+              onChange={v => onThresholdChange({ maxWobbleDeg: v })} />
             <SliderRow label="最大漂移" value={Math.round(thresholds.maxDrift * 100)} min={1} max={20} step={1} unit="%"
               onChange={v => onThresholdChange({ maxDrift: v / 100 })} />
             <SliderRow label="最低转速" value={thresholds.minRPM} min={30} max={200} step={10} unit="rpm"

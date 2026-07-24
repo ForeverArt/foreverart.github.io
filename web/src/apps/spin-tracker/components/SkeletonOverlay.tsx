@@ -1,10 +1,10 @@
 import { useEffect, useRef, useCallback } from 'react'
-import type { Landmark } from '@spin/lib/spinAlgorithm'
+import type { PoseLandmark } from '@/platforms/figure-skating/core'
 import { renderAll } from '@spin/lib/poseRenderer'
 
 interface SkeletonOverlayProps {
-  landmarks: Landmark[] | null
-  getHistory: () => Landmark[][]
+  landmarks: PoseLandmark[] | null
+  getHistory: () => PoseLandmark[][]
   isGood: boolean
 }
 

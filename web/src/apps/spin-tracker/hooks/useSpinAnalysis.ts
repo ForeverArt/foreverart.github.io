@@ -1,74 +1,47 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
-import type { Landmark } from '@spin/lib/spinAlgorithm'
+import type { PoseLandmark } from '@/platforms/figure-skating/core'
 import {
-  computeMetrics,
-  computeScores,
-  generateFeedback,
-  getStatusLabel,
-  DEFAULT_THRESHOLDS,
-  type SpinMetrics,
-  type SpinScores,
-  type SpinThresholds,
-} from '@spin/lib/spinAlgorithm'
+  createIdlePipelineFrame,
+  SpinPipeline,
+  type PipelineFrame,
+} from '@spin/pipeline'
+import { DEFAULT_THRESHOLDS, type SpinThresholds } from '@spin/rules'
 
-const HISTORY_SIZE = 90  // 保留3秒帧历史（30fps × 3s）
-
-export interface SpinAnalysisState {
-  metrics: SpinMetrics
-  scores: SpinScores
-  status: { text: string; level: 'good' | 'warn' | 'bad' | 'idle' }
-  feedback: string[]
-}
-
-const DEFAULT_METRICS: SpinMetrics = {
-  tiltAngle: 0,
-  driftRange: 0,
-  rpm: 0,
-  armSymmetry: 1,
-  isSpinning: false,
-}
-
-const DEFAULT_SCORES: SpinScores = {
-  stability: 100,
-  symmetry: 100,
-  drift: 100,
-  tilt: 100,
-  overall: 100,
-}
+export type SpinAnalysisState = Omit<PipelineFrame, 'samples' | 'history'>
 
 export function useSpinAnalysis(
-  landmarks: Landmark[] | null,
+  landmarks: PoseLandmark[] | null,
   fps: number,
   thresholds: SpinThresholds = DEFAULT_THRESHOLDS
 ) {
-  const historyRef = useRef<Landmark[][]>([])
-  const [state, setState] = useState<SpinAnalysisState>({
-    metrics: DEFAULT_METRICS,
-    scores: DEFAULT_SCORES,
-    status: { text: '等待检测', level: 'idle' },
-    feedback: [],
+  const pipelineRef = useRef(new SpinPipeline({ thresholds }))
+  const [state, setState] = useState<SpinAnalysisState>(() => {
+    const idle = createIdlePipelineFrame()
+    return {
+      metrics: idle.metrics,
+      scores: idle.scores,
+      status: idle.status,
+      feedback: idle.feedback,
+    }
   })
+
+  useEffect(() => {
+    pipelineRef.current.setThresholds(thresholds)
+  }, [thresholds])
 
   useEffect(() => {
     if (!landmarks || landmarks.length === 0) return
 
-    // 更新帧历史
-    historyRef.current = [
-      ...historyRef.current.slice(-(HISTORY_SIZE - 1)),
-      landmarks,
-    ]
-
-    const effectiveFps = fps > 0 ? fps : 30
-    const metrics = computeMetrics(landmarks, historyRef.current, effectiveFps)
-    const scores = computeScores(metrics, thresholds)
-    const status = getStatusLabel(metrics, scores)
-    const feedback = generateFeedback(metrics)
-
-    setState({ metrics, scores, status, feedback })
+    const frame = pipelineRef.current.tick(landmarks, fps)
+    setState({
+      metrics: frame.metrics,
+      scores: frame.scores,
+      status: frame.status,
+      feedback: frame.feedback,
+    })
   }, [landmarks, fps, thresholds])
 
-  // 获取帧历史（供 Canvas 渲染用）- useCallback 保持引用稳定，避免触发 SkeletonOverlay 无限重渲染
-  const getHistory = useCallback(() => historyRef.current, [])
+  const getHistory = useCallback(() => pipelineRef.current.getHistory(), [])
 
   return { ...state, getHistory }
 }

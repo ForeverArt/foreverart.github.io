@@ -8,6 +8,9 @@ export type SpeechEvent =
   | 'tracking_acquired'   // 追踪到目标
   | 'tracking_lost'       // 丢失目标
   | 'axis_stable'         // 轴心稳定
+  | 'axis_wobble'         // 轴心晃动（锥半角波动）
+  | 'detection_started'   // 开始检测
+  | 'detection_stopped'   // 结束检测
   | 'tilt_left'           // 轴心偏左
   | 'tilt_right'          // 轴心偏右
   | 'tilt_forward'        // 轴心偏前（俯仰）
@@ -18,6 +21,9 @@ const SPEECH_TEXTS: Record<SpeechEvent, string> = {
   tracking_acquired: '已追踪到目标',
   tracking_lost:     '目标丢失',
   axis_stable:       '轴心稳定',
+  axis_wobble:       '轴心晃动，收紧核心',
+  detection_started: '开始检测',
+  detection_stopped: '检测结束',
   tilt_left:         '轴心偏左',
   tilt_right:        '轴心偏右',
   tilt_forward:      '轴心偏前',
@@ -30,6 +36,9 @@ const COOLDOWNS: Record<SpeechEvent, number> = {
   tracking_acquired: 3000,
   tracking_lost:     3000,
   axis_stable:       5000,
+  axis_wobble:       4000,
+  detection_started: 0,
+  detection_stopped: 0,
   tilt_left:         2500,
   tilt_right:        2500,
   tilt_forward:      2500,

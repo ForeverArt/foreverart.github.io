@@ -8,8 +8,8 @@ export default function SpinTrackerPage() {
   return (
     <div className="relative h-screen">
       {/* 悬浮返回按钮 */}
-      <button
-        onClick={() => navigate('/')}
+        <button
+        onClick={() => navigate('/platforms/figure-skating')}
         className="
           absolute top-2 left-2 z-50
           flex items-center gap-1 px-2 py-1 rounded
@@ -19,7 +19,7 @@ export default function SpinTrackerPage() {
         "
       >
         <ArrowLeft size={13} />
-        返回
+        返回平台
       </button>
 
       <SpinTrackerApp />

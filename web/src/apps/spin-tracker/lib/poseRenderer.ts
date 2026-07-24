@@ -1,5 +1,7 @@
-import type { Landmark } from './spinAlgorithm'
-import { LANDMARKS, computeSpineTilt } from './spinAlgorithm'
+import { LANDMARKS, type PoseLandmark } from '@/platforms/figure-skating/core'
+import { computeSpineTilt } from '@spin/features'
+
+type Landmark = PoseLandmark
 
 // MediaPipe Pose 骨骼连线定义
 const POSE_CONNECTIONS: [number, number][] = [
@@ -84,13 +86,14 @@ export function renderSkeleton(
 
 /**
  * 渲染旋转轴线（脊柱中心线延伸）
+ * wobbleGood: 轴心晃动是否在允许范围内（基于锥半角波动，而非瞬时投影角）
  */
 export function renderSpineAxis(
   ctx: CanvasRenderingContext2D,
   landmarks: Landmark[],
   w: number,
   h: number,
-  tiltAngle: number
+  wobbleGood: boolean
 ): void {
   const lsh = landmarks[LANDMARKS.LEFT_SHOULDER]
   const rsh = landmarks[LANDMARKS.RIGHT_SHOULDER]
@@ -124,8 +127,7 @@ export function renderSpineAxis(
   const botX = hipMid.x - nx * extend
   const botY = hipMid.y - ny * extend
 
-  const isAligned = Math.abs(tiltAngle) < 5
-  const axisColor = isAligned ? 'rgba(74, 222, 128, 0.6)' : 'rgba(251, 146, 60, 0.8)'
+  const axisColor = wobbleGood ? 'rgba(74, 222, 128, 0.6)' : 'rgba(251, 146, 60, 0.8)'
 
   // 理想垂直轴（虚线）
   const centerX = (shoulderMid.x + hipMid.x) / 2
@@ -193,13 +195,15 @@ export function renderDriftTrail(
 
 /**
  * 渲染倾斜角度标注（角度弧线）
+ * 显示瞬时2D投影角供参考，颜色由晃动度决定
  */
 export function renderTiltIndicator(
   ctx: CanvasRenderingContext2D,
   landmarks: Landmark[],
   w: number,
   h: number,
-  tiltAngle: number
+  tiltAngle: number,
+  wobbleGood: boolean
 ): void {
   const lhip = landmarks[LANDMARKS.LEFT_HIP]
   const rhip = landmarks[LANDMARKS.RIGHT_HIP]
@@ -212,14 +216,14 @@ export function renderTiltIndicator(
 
   // 绘制角度文字
   ctx.font = 'bold 14px JetBrains Mono, monospace'
-  ctx.fillStyle = Math.abs(tiltAngle) < 5 ? 'rgba(74, 222, 128, 0.9)' : 'rgba(251, 146, 60, 0.9)'
+  ctx.fillStyle = wobbleGood ? 'rgba(74, 222, 128, 0.9)' : 'rgba(251, 146, 60, 0.9)'
   ctx.textAlign = tiltAngle > 0 ? 'left' : 'right'
   const textX = hipMidX + (tiltAngle > 0 ? 12 : -12)
   ctx.fillText(`${tiltAngle > 0 ? '+' : ''}${tiltAngle.toFixed(1)}°`, textX, hipMidY)
 }
 
 /**
- * 完整渲染入口
+ * 完整渲染入口。骨骼 / 轴线 / 倾角指示统一使用 status 派生的 isGood。
  */
 export function renderAll(
   ctx: CanvasRenderingContext2D,
@@ -227,14 +231,14 @@ export function renderAll(
   frameHistory: Landmark[][],
   w: number,
   h: number,
-  isGood: boolean
+  isGood: boolean,
 ): void {
   ctx.clearRect(0, 0, w, h)
 
   const tiltAngle = computeSpineTilt(landmarks)
 
   renderDriftTrail(ctx, frameHistory, w, h)
-  renderSpineAxis(ctx, landmarks, w, h, tiltAngle)
+  renderSpineAxis(ctx, landmarks, w, h, isGood)
   renderSkeleton(ctx, landmarks, w, h, isGood)
-  renderTiltIndicator(ctx, landmarks, w, h, tiltAngle)
+  renderTiltIndicator(ctx, landmarks, w, h, tiltAngle, isGood)
 }

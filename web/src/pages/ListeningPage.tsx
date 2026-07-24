@@ -9,11 +9,11 @@ export default function ListeningPage() {
       {/* 顶部返回栏 */}
       <div className="flex-none h-10 flex items-center px-3 border-b border-border bg-card">
         <button
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/platforms/life-tools')}
           className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft size={15} />
-          返回
+          返回平台
         </button>
       </div>
 

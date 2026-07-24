@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
@@ -32,5 +33,9 @@ export default defineConfig({
       '@': path.resolve(__dirname, 'src'),
       '@spin': path.resolve(__dirname, 'src/apps/spin-tracker'),
     },
+  },
+  test: {
+    environment: 'node',
+    include: ['src/**/*.{test,spec}.ts'],
   },
 })

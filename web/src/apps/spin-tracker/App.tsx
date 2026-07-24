@@ -3,14 +3,22 @@ import { useCamera } from '@spin/hooks/useCamera'
 import { usePose } from '@spin/hooks/usePose'
 import { useSpinAnalysis } from '@spin/hooks/useSpinAnalysis'
 import { CameraView } from '@spin/components/CameraView'
-import { DEFAULT_THRESHOLDS, type SpinThresholds } from '@spin/lib/spinAlgorithm'
-import { speechService, type SpeechEvent } from '@spin/lib/speechService'
+import {
+  DEFAULT_THRESHOLDS,
+  evaluateSpeechEvents,
+  INITIAL_SPEECH_RULE_STATE,
+  isQualityGood,
+  type SpinThresholds,
+} from '@spin/rules'
+import { speechService } from '@spin/lib/speechService'
+import { playStartBeep, playStopBeep } from '@spin/lib/beepService'
+import { setupHeadsetControl } from '@spin/lib/headsetControl'
 
 export default function App() {
   const containerRef = useRef<HTMLDivElement>(null)
   const [enabled, setEnabled] = useState(false)
   const [thresholds, setThresholds] = useState<SpinThresholds>(DEFAULT_THRESHOLDS)
-  const [speechEnabled, setSpeechEnabled] = useState(false)
+  const [speechEnabled, setSpeechEnabled] = useState(true)
   const [isFullscreen, setIsFullscreen] = useState(false)
 
   const { videoRef, state: cameraState, startCamera, stopCamera, switchCamera } = useCamera()
@@ -21,7 +29,6 @@ export default function App() {
     thresholds
   )
 
-  // 全屏管理：用 localStorage 记录偏好，避免手动退出后被强制弹回
   const FS_KEY = 'spin-tracker-fullscreen'
   const fsPreferRef = useRef(localStorage.getItem(FS_KEY) !== 'false')
   const fsRestoringRef = useRef(false)
@@ -44,13 +51,11 @@ export default function App() {
     }
   }, [enterFullscreen])
 
-  // 首次进入：按偏好决定是否全屏（默认全屏）
   useEffect(() => {
     if (fsPreferRef.current) enterFullscreen()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // 监听全屏变化，effect 只注册一次，通过 ref 访问最新的 enterFullscreen
   const enterFullscreenRef = useRef(enterFullscreen)
   useEffect(() => { enterFullscreenRef.current = enterFullscreen }, [enterFullscreen])
 
@@ -70,48 +75,26 @@ export default function App() {
     }
     document.addEventListener('fullscreenchange', onFsChange)
     return () => document.removeEventListener('fullscreenchange', onFsChange)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // 语音播报
-  const prevStateRef = useRef({
-    hasLandmarks: false,
-    isSpinning: false,
-    statusLevel: 'idle' as 'good' | 'warn' | 'bad' | 'idle',
-    tiltAngle: 0,
-    driftRange: 0,
-  })
+  useEffect(() => {
+    speechService.setEnabled(true)
+  }, [])
+
+  const speechStateRef = useRef(INITIAL_SPEECH_RULE_STATE)
 
   useEffect(() => {
     if (!speechEnabled) return
-    const prev = prevStateRef.current
     const hasLandmarks = poseState.landmarks !== null && poseState.landmarks.length > 0
-
-    if (hasLandmarks && !prev.hasLandmarks) speechService.speak('tracking_acquired')
-    else if (!hasLandmarks && prev.hasLandmarks) speechService.speak('tracking_lost')
-
-    if (metrics.isSpinning && hasLandmarks) {
-      const tilt = metrics.tiltAngle
-      const drift = metrics.driftRange
-      if (status.level === 'good' && prev.statusLevel !== 'good') speechService.speak('axis_stable')
-      if (Math.abs(tilt) >= thresholds.maxTiltDeg) {
-        const event: SpeechEvent = tilt > 0 ? 'tilt_right' : 'tilt_left'
-        speechService.speak(event)
-      }
-      if (drift >= thresholds.maxDrift && prev.driftRange < thresholds.maxDrift) {
-        speechService.speak('drift_detected')
-      }
-    }
-
-    prevStateRef.current = {
+    const { events, next } = evaluateSpeechEvents(speechStateRef.current, {
       hasLandmarks,
-      isSpinning: metrics.isSpinning,
+      metrics,
       statusLevel: status.level,
-      tiltAngle: metrics.tiltAngle,
-      driftRange: metrics.driftRange,
-    }
-  }, [speechEnabled, poseState.landmarks, metrics.isSpinning, metrics.tiltAngle,
-      metrics.driftRange, status.level, thresholds.maxTiltDeg, thresholds.maxDrift])
+      thresholds,
+    })
+    for (const event of events) speechService.speak(event)
+    speechStateRef.current = next
+  }, [speechEnabled, poseState.landmarks, metrics, status.level, thresholds])
 
   const handleSpeechToggle = useCallback((v: boolean) => {
     setSpeechEnabled(v)
@@ -119,26 +102,42 @@ export default function App() {
   }, [])
 
   const handleStart = useCallback(async () => {
+    playStartBeep()
+    speechService.speak('detection_started')
     setEnabled(true)
     await startCamera(cameraState.facingMode)
   }, [startCamera, cameraState.facingMode])
 
   const handleStop = useCallback(() => {
+    playStopBeep()
     setEnabled(false)
     stopCamera()
     speechService.resetCooldowns()
-    prevStateRef.current = { hasLandmarks: false, isSpinning: false, statusLevel: 'idle', tiltAngle: 0, driftRange: 0 }
+    speechService.speak('detection_stopped')
+    speechStateRef.current = { ...INITIAL_SPEECH_RULE_STATE }
   }, [stopCamera])
+
+  const headsetRef = useRef({ onStart: handleStart, onStop: handleStop, isRunning: false })
+  useEffect(() => {
+    headsetRef.current = { onStart: handleStart, onStop: handleStop, isRunning: enabled && cameraState.isReady }
+  }, [handleStart, handleStop, enabled, cameraState.isReady])
+
+  useEffect(() => {
+    return setupHeadsetControl({
+      onStart: () => { void headsetRef.current.onStart() },
+      onStop: () => headsetRef.current.onStop(),
+      isRunning: () => headsetRef.current.isRunning,
+    })
+  }, [])
 
   const handleThresholdChange = useCallback((partial: Partial<SpinThresholds>) => {
     setThresholds(prev => ({ ...prev, ...partial }))
   }, [])
 
-  const isGood = status.level === 'good' || status.level === 'idle'
+  const isGood = isQualityGood(status.level)
 
   return (
     <div ref={containerRef} className="relative w-full h-screen overflow-hidden bg-black">
-      {/* 全屏摄像头画面 */}
       <CameraView
         videoRef={videoRef}
         isReady={cameraState.isReady}

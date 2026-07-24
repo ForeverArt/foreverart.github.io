@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Landmark } from '@spin/lib/spinAlgorithm'
-// build: 2026-07-22
+import type { PoseLandmark } from '@/platforms/figure-skating/core'
+import { toPoseLandmarks } from '@spin/lib/mediapipeAdapter'
 
 export interface DownloadProgress {
   file: string
@@ -9,7 +9,7 @@ export interface DownloadProgress {
 }
 
 export interface PoseState {
-  landmarks: Landmark[] | null
+  landmarks: PoseLandmark[] | null
   isLoading: boolean
   loadingMessage: string
   downloadProgress: DownloadProgress | null
@@ -17,9 +17,13 @@ export interface PoseState {
   fps: number
 }
 
-// 预估总下载量（取 SIMD 路径：wasm + data）
-export const MEDIAPIPE_TOTAL_BYTES = 6_104_372 + 2_962_288 // ~8.6 MB
+/** Estimated MediaPipe full model download (SIMD wasm + data). */
+export const MEDIAPIPE_TOTAL_BYTES = 6_104_372 + 2_962_288
 
+/**
+ * MediaPipe Pose vision adapter.
+ * Produces platform-standard PoseLandmark[] — consumers must not import @mediapipe types.
+ */
 export function usePose(
   videoRef: React.RefObject<HTMLVideoElement>,
   isVideoReady: boolean,
@@ -39,7 +43,6 @@ export function usePose(
   const initTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const fpsCounterRef = useRef({ frames: 0, lastTime: Date.now() })
 
-  // 用 ref 持有 fps 更新逻辑，避免将其列入 useEffect 依赖导致 init() 重复执行
   const updateFpsRef = useRef<() => void>(() => {})
   updateFpsRef.current = () => {
     fpsCounterRef.current.frames++
@@ -62,7 +65,13 @@ export function usePose(
     let initialized = false
 
     async function init() {
-      setState(s => ({ ...s, isLoading: true, loadingMessage: '加载姿态检测模型...', error: null, downloadProgress: null }))
+      setState(s => ({
+        ...s,
+        isLoading: true,
+        loadingMessage: '加载姿态检测模型...',
+        error: null,
+        downloadProgress: null,
+      }))
 
       try {
         const { Pose } = await import('@mediapipe/pose')
@@ -80,7 +89,6 @@ export function usePose(
           minTrackingConfidence: 0.5,
         })
 
-        // 超时保护：30s 内若从未收到结果则报错
         let gotFirstResult = false
         const timeoutId = setTimeout(() => {
           if (!gotFirstResult && !cancelled) {
@@ -95,7 +103,7 @@ export function usePose(
         }, 30_000)
         initTimeoutRef.current = timeoutId
 
-        pose.onResults((results: { poseLandmarks?: Landmark[] }) => {
+        pose.onResults((results: { poseLandmarks?: Array<{ x: number; y: number; z?: number; visibility?: number }> }) => {
           if (cancelled) return
           if (!gotFirstResult) {
             gotFirstResult = true
@@ -107,7 +115,7 @@ export function usePose(
             isLoading: false,
             loadingMessage: '',
             downloadProgress: null,
-            landmarks: results.poseLandmarks ?? null,
+            landmarks: toPoseLandmarks(results.poseLandmarks),
           }))
         })
 
@@ -115,7 +123,6 @@ export function usePose(
 
         setState(s => ({ ...s, loadingMessage: '初始化检测引擎...' }))
 
-        // 先完成 WASM 初始化，再启动严格串行的帧循环
         await pose.initialize()
         initialized = true
         if (cancelled) {
@@ -169,7 +176,6 @@ export function usePose(
       poseRef.current = null
       if (initialized) void pose?.close().catch(() => {})
     }
-    // videoRef 是稳定的 ref 对象，不会变化；updateFpsRef 通过 ref 模式规避依赖
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isVideoReady, enabled])
 
