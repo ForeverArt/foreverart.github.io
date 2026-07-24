@@ -4,6 +4,7 @@ import { Loader2, CameraOff, Camera, CameraOff as StopIcon, FlipHorizontal,
          Move, TrendingUp, Maximize, Minimize, Headphones } from 'lucide-react'
 import { SkeletonOverlay } from './SkeletonOverlay'
 import { ZoomControl } from './ZoomControl'
+import { FrameRateControl } from './FrameRateControl'
 import { Badge } from './ui/badge'
 import { Progress } from './ui/progress'
 import type { PoseLandmark } from '@/platforms/figure-skating/core'
@@ -13,7 +14,7 @@ import type { SpinScores, SpinThresholds } from '@spin/rules'
 type Landmark = PoseLandmark
 import type { DownloadProgress } from '@spin/hooks/usePose'
 import { MEDIAPIPE_TOTAL_BYTES } from '@spin/hooks/usePose'
-import type { ZoomState } from '@spin/hooks/useCamera'
+import type { ZoomState, FrameRateState } from '@spin/hooks/useCamera'
 import { cn } from '@spin/lib/utils'
 
 interface CameraViewProps {
@@ -38,6 +39,7 @@ interface CameraViewProps {
   facingMode: 'environment' | 'user'
   isFullscreen: boolean
   zoom: ZoomState
+  frameRate: FrameRateState
   onStart: () => void
   onStop: () => void
   onSwitchCamera: () => void
@@ -45,6 +47,7 @@ interface CameraViewProps {
   onSpeechToggle: (enabled: boolean) => void
   onToggleFullscreen: () => void
   onZoomChange: (value: number) => void
+  onFrameRateChange: (value: number) => void
 }
 
 function fmt(b: number) {
@@ -64,7 +67,7 @@ export function CameraView({
   error, landmarks, getHistory, isGood, statusText, statusLevel, fps,
   metrics, scores, feedback, thresholds, speechEnabled, isRunning, facingMode,
   isFullscreen, onStart, onStop, onSwitchCamera, onThresholdChange, onSpeechToggle,
-  onToggleFullscreen, zoom, onZoomChange,
+  onToggleFullscreen, zoom, onZoomChange, frameRate, onFrameRateChange,
 }: CameraViewProps) {
   const [showSettings, setShowSettings] = useState(false)
   const [showScore, setShowScore] = useState(false)
@@ -217,10 +220,13 @@ export function CameraView({
 
       {/* ── 底部控制区 ── */}
       <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-safe-4 pb-4">
-        {/* 变焦控制：仅设备支持 zoom 且摄像头就绪时显示 */}
-        {isReady && zoom.supported && (
-          <div className="mb-2 flex justify-center pointer-events-none">
-            <ZoomControl zoom={zoom} onZoomChange={onZoomChange} />
+        {/* 变焦 / 帧率控制：仅设备支持且摄像头就绪时显示 */}
+        {isReady && (zoom.supported || (frameRate.supported && frameRate.max > 30)) && (
+          <div className="mb-2 flex justify-center items-center gap-2 pointer-events-none">
+            {zoom.supported && <ZoomControl zoom={zoom} onZoomChange={onZoomChange} />}
+            {frameRate.supported && frameRate.max > 30 && (
+              <FrameRateControl frameRate={frameRate} onFrameRateChange={onFrameRateChange} />
+            )}
           </div>
         )}
 

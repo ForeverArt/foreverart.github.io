@@ -19,7 +19,7 @@ export default function App() {
   const [speechEnabled, setSpeechEnabled] = useState(true)
   const [isFullscreen, setIsFullscreen] = useState(false)
 
-  const { videoRef, state: cameraState, zoom, setZoom, startCamera, stopCamera, switchCamera } = useCamera()
+  const { videoRef, state: cameraState, zoom, setZoom, frameRate, setFrameRate, startCamera, stopCamera, switchCamera } = useCamera()
   const poseState = usePose(videoRef, cameraState.isReady, enabled)
   const { metrics, scores, status, feedback, speechEvents, getHistory } = useSpinAnalysis(
     poseState.landmarks,
@@ -159,6 +159,7 @@ export default function App() {
         facingMode={cameraState.facingMode}
         isFullscreen={isFullscreen}
         zoom={zoom}
+        frameRate={frameRate}
         onStart={handleStart}
         onStop={handleStop}
         onSwitchCamera={() => switchCamera(enabled && cameraState.isReady)}
@@ -166,6 +167,7 @@ export default function App() {
         onSpeechToggle={handleSpeechToggle}
         onToggleFullscreen={toggleFullscreen}
         onZoomChange={setZoom}
+        onFrameRateChange={setFrameRate}
       />
     </div>
   )
