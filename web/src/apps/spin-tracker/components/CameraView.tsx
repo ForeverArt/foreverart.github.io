@@ -3,6 +3,7 @@ import { Loader2, CameraOff, Camera, CameraOff as StopIcon, FlipHorizontal,
          SlidersHorizontal, X, Volume2, VolumeX, RotateCcw, ArrowUpDown,
          Move, TrendingUp, Maximize, Minimize } from 'lucide-react'
 import { SkeletonOverlay } from './SkeletonOverlay'
+import { ZoomControl } from './ZoomControl'
 import { Badge } from './ui/badge'
 import { Progress } from './ui/progress'
 import type { PoseLandmark } from '@/platforms/figure-skating/core'
@@ -12,6 +13,7 @@ import type { SpinScores, SpinThresholds } from '@spin/rules'
 type Landmark = PoseLandmark
 import type { DownloadProgress } from '@spin/hooks/usePose'
 import { MEDIAPIPE_TOTAL_BYTES } from '@spin/hooks/usePose'
+import type { ZoomState } from '@spin/hooks/useCamera'
 import { cn } from '@spin/lib/utils'
 
 interface CameraViewProps {
@@ -35,12 +37,14 @@ interface CameraViewProps {
   isRunning: boolean
   facingMode: 'environment' | 'user'
   isFullscreen: boolean
+  zoom: ZoomState
   onStart: () => void
   onStop: () => void
   onSwitchCamera: () => void
   onThresholdChange: (t: Partial<SpinThresholds>) => void
   onSpeechToggle: (enabled: boolean) => void
   onToggleFullscreen: () => void
+  onZoomChange: (value: number) => void
 }
 
 function fmt(b: number) {
@@ -60,7 +64,7 @@ export function CameraView({
   error, landmarks, getHistory, isGood, statusText, statusLevel, fps,
   metrics, scores, feedback, thresholds, speechEnabled, isRunning, facingMode,
   isFullscreen, onStart, onStop, onSwitchCamera, onThresholdChange, onSpeechToggle,
-  onToggleFullscreen,
+  onToggleFullscreen, zoom, onZoomChange,
 }: CameraViewProps) {
   const [showSettings, setShowSettings] = useState(false)
   const [showScore, setShowScore] = useState(false)
@@ -211,6 +215,13 @@ export function CameraView({
 
       {/* ── 底部控制区 ── */}
       <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-safe-4 pb-4">
+        {/* 变焦控制：仅设备支持 zoom 且摄像头就绪时显示 */}
+        {isReady && zoom.supported && (
+          <div className="mb-2 flex justify-center pointer-events-none">
+            <ZoomControl zoom={zoom} onZoomChange={onZoomChange} />
+          </div>
+        )}
+
         {/* 参数设置面板（向上展开）*/}
         {showSettings && (
           <div className="mb-3 bg-black/80 backdrop-blur-sm border border-white/15 rounded-2xl p-4 space-y-4">

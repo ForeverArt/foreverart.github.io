@@ -19,7 +19,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@spin/*": ["./src/apps/spin-tracker/*"]
+      "@spin/*": ["./src/apps/spin-tracker/*"],
+      "@listen/*": ["./src/apps/listening/*"]
     }
   },
   "include": ["src"],
