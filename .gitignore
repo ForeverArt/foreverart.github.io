@@ -21,6 +21,7 @@ backend-dashboard/.vite/
 
 # 后端部署产物（CI 生成）
 foreverart-api
+foreverart-api.exe
 deploy.tar.gz
 
 # 环境变量

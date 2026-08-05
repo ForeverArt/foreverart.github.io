@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Headphones, RefreshCw, PersonStanding, Waves } from 'lucide-react'
+import { ArrowLeft, Headphones, RefreshCw, PersonStanding, Waves, Newspaper } from 'lucide-react'
 import { getPlatform, type PlatformApp } from '@/config/platforms'
 import { IS_FS_DOMAIN, fsUrl } from '@/lib/domain'
 
@@ -14,6 +14,8 @@ function AppIcon({ icon }: { icon: PlatformApp['icon'] }) {
       return <PersonStanding size={32} strokeWidth={1.5} />
     case 'skate':
       return <Waves size={32} strokeWidth={1.5} />
+    case 'newspaper':
+      return <Newspaper size={32} strokeWidth={1.5} />
   }
 }
 

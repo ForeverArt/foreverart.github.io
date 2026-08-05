@@ -8,7 +8,7 @@ export interface PlatformApp {
   path?: string
   status: AppStatus
   accent: string
-  icon: 'headphones' | 'refresh' | 'jump' | 'skate'
+  icon: 'headphones' | 'refresh' | 'jump' | 'skate' | 'newspaper'
 }
 
 export interface Platform {
@@ -27,7 +27,7 @@ export const platforms: Platform[] = [
     id: 'life-tools',
     title: '生活工具平台',
     subtitle: 'Life Tools',
-    description: '本地优先的日常效率工具。当前提供 Listening 听力材料合成。',
+    description: '本地优先的日常效率工具。当前提供 Listening 听力材料合成和 News 热点资讯聚合。',
     path: '/platforms/life-tools',
     accent: 'from-sky-500/20 to-blue-600/10 border-sky-500/30 hover:border-sky-400/60',
     icon: 'life',
@@ -41,6 +41,16 @@ export const platforms: Platform[] = [
         status: 'active',
         accent: 'from-sky-500/20 to-blue-600/10 border-sky-500/30 hover:border-sky-400/60',
         icon: 'headphones',
+      },
+      {
+        id: 'news',
+        title: 'News Radar',
+        subtitle: '热点资讯聚合',
+        description: '多平台热榜聚合、关键词订阅、AI 日报。支持 RSS 输出，订阅你关心的热点。',
+        path: '/news',
+        status: 'active',
+        accent: 'from-amber-500/20 to-orange-600/10 border-amber-500/30 hover:border-amber-400/60',
+        icon: 'newspaper',
       },
     ],
   },

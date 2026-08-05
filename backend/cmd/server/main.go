@@ -16,6 +16,7 @@ import (
 	"github.com/foreverart/foreverart.github.io/backend/internal/httpx"
 	"github.com/foreverart/foreverart.github.io/backend/internal/knowledge"
 	"github.com/foreverart/foreverart.github.io/backend/internal/llm"
+	"github.com/foreverart/foreverart.github.io/backend/internal/news"
 	"github.com/foreverart/foreverart.github.io/backend/internal/report"
 	"github.com/foreverart/foreverart.github.io/backend/internal/stats"
 	"github.com/foreverart/foreverart.github.io/backend/internal/version"
@@ -103,6 +104,28 @@ func main() {
 		})
 	}))
 
+	// News module (optional: only enabled if NEWS_DATA_ROOT is set)
+	var newsStore *news.Store
+	if cfg.NewsDataRoot != "" {
+		tr, err := news.NewTrendRadarReader(cfg.NewsDataRoot)
+		if err != nil {
+			log.Printf("[news] TrendRadar reader init failed: %v (news module disabled)", err)
+		} else {
+			store, err := news.OpenStore(cfg.NewsDBPath)
+			if err != nil {
+				log.Printf("[news] store init failed: %v (news module disabled)", err)
+			} else {
+				newsStore = store
+				llmAdapter := &newsLLMAdapter{p: provider}
+				handlers := news.NewHandlers(store, tr, llmAdapter, cfg.NewsTokenSecret)
+				handlers.Register(mux)
+				log.Printf("[news] module enabled: data_root=%s db=%s", cfg.NewsDataRoot, cfg.NewsDBPath)
+			}
+		}
+	} else {
+		log.Printf("[news] NEWS_DATA_ROOT not set, news module disabled")
+	}
+
 	handler := recMiddleware(rec, httpx.CORS(cfg.CORSOrigins)(mux))
 
 	addr := cfg.Host + ":" + cfg.Port
@@ -137,6 +160,24 @@ func main() {
 			log.Fatal(err)
 		}
 	}
+
+	if newsStore != nil {
+		newsStore.Close()
+	}
+}
+
+// newsLLMAdapter adapts llm.Provider to news.LLMProvider interface.
+type newsLLMAdapter struct {
+	p llm.Provider
+}
+
+func (a *newsLLMAdapter) Chat(ctx context.Context, messages []news.ChatMessage) (string, string, error) {
+	// Convert news.ChatMessage to llm.ChatMessage
+	llmMsgs := make([]llm.ChatMessage, len(messages))
+	for i, m := range messages {
+		llmMsgs[i] = llm.ChatMessage{Role: m.Role, Content: m.Content}
+	}
+	return a.p.Chat(ctx, llmMsgs)
 }
 
 // recMiddleware counts every incoming request.

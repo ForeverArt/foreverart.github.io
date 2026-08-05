@@ -1,0 +1,28 @@
+# TrendRadar docker-compose
+# 部署位置: /home/admin/trendradar/docker-compose.yml
+# 由 CI deploy-backend.yml 自动同步
+services:
+  trendradar:
+    image: wantcat/trendradar:latest
+    container_name: trendradar
+    restart: unless-stopped
+
+    ports:
+      - "127.0.0.1:${WEBSERVER_PORT:-8080}:${WEBSERVER_PORT:-8080}"
+
+    volumes:
+      - ./config:/app/config:ro
+      - ./output:/app/output
+
+    environment:
+      - TZ=Asia/Shanghai
+      - WEBSERVER_PORT=${WEBSERVER_PORT:-8080}
+      # AI 配置（关闭 TrendRadar 内建 AI，日报由 foreverart-api 生成）
+      - AI_ANALYSIS_ENABLED=
+      - AI_API_KEY=${AI_API_KEY:-}
+      - AI_MODEL=${AI_MODEL:-}
+      - AI_API_BASE=${AI_API_BASE:-}
+      # 运行模式
+      - CRON_SCHEDULE=${CRON_SCHEDULE:-*/30 * * * *}
+      - RUN_MODE=${RUN_MODE:-cron}
+      - IMMEDIATE_RUN=${IMMEDIATE_RUN:-true}

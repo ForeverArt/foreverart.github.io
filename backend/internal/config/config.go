@@ -17,6 +17,11 @@ type Config struct {
 	MaxBodyBytes      int64
 	KnowledgeRoot     string
 	AdminPassword     string
+
+	// News module config
+	NewsDataRoot    string // TrendRadar output directory (read-only)
+	NewsDBPath      string // Path to news module's own SQLite DB
+	NewsTokenSecret string // HMAC secret for auth tokens
 }
 
 func Load() Config {
@@ -31,6 +36,11 @@ func Load() Config {
 		MaxBodyBytes:      int64(getenvInt("MAX_BODY_BYTES", 5*1024*1024)),
 		KnowledgeRoot:     getenv("KNOWLEDGE_ROOT", ""),
 		AdminPassword:     os.Getenv("ADMIN_PASSWORD"), // empty = admin endpoints disabled
+
+		// News module
+		NewsDataRoot:    os.Getenv("NEWS_DATA_ROOT"),   // empty = news module disabled
+		NewsDBPath:      getenv("NEWS_DB_PATH", "./foreverart-api.db"),
+		NewsTokenSecret: getenv("NEWS_TOKEN_SECRET", "change-me-in-production"),
 	}
 }
 
