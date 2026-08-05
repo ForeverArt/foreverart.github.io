@@ -12,7 +12,9 @@ git pull origin master
 
 # ── TrendRadar 部署（幂等，安全重复执行）──
 TRENDRADAR_DIR=/home/admin/trendradar
-mkdir -p "$TRENDRADAR_DIR"/{config,output}
+mkdir -p "$TRENDRADAR_DIR"
+mkdir -p "$TRENDRADAR_DIR/config"
+mkdir -p "$TRENDRADAR_DIR/output"
 
 # 同步 docker-compose.yml 和 config 模板（不覆盖已存在的 .env）
 cp deploy/trendradar/docker-compose.yml "$TRENDRADAR_DIR/"
@@ -26,15 +28,21 @@ if [ ! -f "$TRENDRADAR_DIR/.env" ]; then
   echo "⚠️  TrendRadar .env 已创建，请编辑 $TRENDRADAR_DIR/.env 填入配置"
 fi
 
-# 拉取镜像并启动/重启容器
-if command -v docker &> /dev/null; then
+# 拉取镜像并启动/重启容器（兼容 docker compose plugin 与旧版 docker-compose）
+if command -v docker &> /dev/null && docker compose version &> /dev/null; then
   cd "$TRENDRADAR_DIR"
-  docker compose pull 2>/dev/null || true
+  docker compose pull
   docker compose up -d
-  echo "TrendRadar container started"
+  echo "TrendRadar container started (docker compose)"
+  cd /home/admin/foreverart-backend
+elif command -v docker-compose &> /dev/null; then
+  cd "$TRENDRADAR_DIR"
+  docker-compose pull
+  docker-compose up -d
+  echo "TrendRadar container started (docker-compose)"
   cd /home/admin/foreverart-backend
 else
-  echo "⚠️  docker not found, TrendRadar not started"
+  echo "⚠️  docker compose not found, TrendRadar not started"
 fi
 
 # 安装/更新 nginx 配置（独立文件，不覆盖 onday 的 sites-enabled/default）
