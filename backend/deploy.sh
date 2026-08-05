@@ -4,6 +4,9 @@ set -e
 
 cd /home/admin/foreverart-backend
 
+# 清理 CI tar 解压遗留的 untracked 文件，避免 git pull 冲突
+rm -rf deploy/
+
 # 拉取最新代码
 git pull origin master
 
