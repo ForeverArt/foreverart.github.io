@@ -55,12 +55,32 @@ rss:
     enabled: true
     max_age_days: 1
   feeds:
+    # --- 科技 ---
     - id: "hacker-news"
       name: "Hacker News"
       url: "https://hnrss.org/frontpage"
-    - id: "yahoo-finance"
-      name: "雅虎财经"
-      url: "https://finance.yahoo.com/news/rssindex"
+    - id: "ars-technica"
+      name: "Ars Technica"
+      url: "https://feeds.arstechnica.com/arstechnica/index"
+    - id: "techcrunch"
+      name: "TechCrunch"
+      url: "https://techcrunch.com/feed/"
+    - id: "the-verge"
+      name: "The Verge"
+      url: "https://www.theverge.com/rss/index.xml"
+    # --- 国际综合 ---
+    - id: "bbc-news"
+      name: "BBC News"
+      url: "https://feeds.bbci.co.uk/news/rss.xml"
+    - id: "nyt-world"
+      name: "NYT World"
+      url: "https://rss.nytimes.com/services/xml/rss/nyt/World.xml"
+    - id: "guardian-world"
+      name: "The Guardian"
+      url: "https://www.theguardian.com/world/rss"
+    - id: "aljazeera"
+      name: "Al Jazeera"
+      url: "https://www.aljazeera.com/xml/rss/all.xml"
 
 report:
   mode: "current"

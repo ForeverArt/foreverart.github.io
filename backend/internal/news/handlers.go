@@ -41,8 +41,9 @@ func (h *Handlers) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/news/auth/register", h.auth.Register)
 	mux.HandleFunc("/api/v1/news/auth/login", h.auth.Login)
 
-	// Protected: keywords, feed management
+	// Protected: keywords, feed management, matched items
 	mux.HandleFunc("/api/v1/news/me/keywords", h.auth.RequireAuth(h.myKeywords))
+	mux.HandleFunc("/api/v1/news/me/matched", h.auth.RequireAuth(h.myMatched))
 	mux.HandleFunc("/api/v1/news/me/feed", h.auth.RequireAuth(h.myFeed))
 	mux.HandleFunc("/api/v1/news/me/feed/reset", h.auth.RequireAuth(h.resetFeed))
 
@@ -185,6 +186,49 @@ func (h *Handlers) myKeywords(w http.ResponseWriter, r *http.Request) {
 	default:
 		jsonError(w, http.StatusMethodNotAllowed, "GET or PUT only")
 	}
+}
+
+func (h *Handlers) myMatched(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		jsonError(w, http.StatusMethodNotAllowed, "GET only")
+		return
+	}
+	userID := getUserID(r)
+	if userID == 0 {
+		jsonError(w, http.StatusUnauthorized, "not authenticated")
+		return
+	}
+
+	kws, err := h.store.GetKeywords(userID)
+	if err != nil {
+		jsonError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if len(kws) == 0 {
+		jsonResp(w, http.StatusOK, []KeywordMatchGroup{})
+		return
+	}
+
+	items, err := h.tr.QueryItems(todayStr(), "", "", 200)
+	if err != nil {
+		jsonError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	// Group items by keyword (case-insensitive substring match)
+	groups := make([]KeywordMatchGroup, 0, len(kws))
+	for _, kw := range kws {
+		kwLower := strings.ToLower(kw)
+		var matched []TRNewsItem
+		for _, it := range items {
+			if strings.Contains(strings.ToLower(it.Title), kwLower) {
+				matched = append(matched, it)
+			}
+		}
+		groups = append(groups, KeywordMatchGroup{Keyword: kw, Items: matched})
+	}
+
+	jsonResp(w, http.StatusOK, groups)
 }
 
 func (h *Handlers) myFeed(w http.ResponseWriter, r *http.Request) {

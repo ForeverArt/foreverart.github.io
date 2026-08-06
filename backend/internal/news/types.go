@@ -75,6 +75,12 @@ type TRRankPoint struct {
 	CrawlTime string `json:"crawlTime"`
 }
 
+// KeywordMatchGroup is a keyword + its matched news items for subscription view.
+type KeywordMatchGroup struct {
+	Keyword string       `json:"keyword"`
+	Items   []TRNewsItem `json:"items"`
+}
+
 // TRDate is an available data date (from directory listing).
 type TRDate struct {
 	Date string

@@ -1,9 +1,13 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
-import { Search, RefreshCw, Rss, LogIn, LogOut, Plus, X, TrendingUp, Star, User as UserIcon } from 'lucide-react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { Search, RefreshCw, LogIn, LogOut, Plus, X, TrendingUp, Star, User as UserIcon, Lock, CheckCircle } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
-import { api, type TRLatestGroup, type TRNewsItem, type Digest } from './api'
+import { api, type TRLatestGroup, type TRNewsItem, type Digest, type KeywordMatchGroup } from './api'
 import { useLocalKeywords, matchesKeyword } from './useLocalKeywords'
+import { useServerKeywords } from './useServerKeywords'
+import { useCountdown } from './useCountdown'
 import { useAuth } from './useAuth'
+
+const COUNTDOWN_SEC = 180
 
 export default function NewsApp() {
   const [groups, setGroups] = useState<TRLatestGroup[]>([])
@@ -15,14 +19,23 @@ export default function NewsApp() {
   const [searchQuery, setSearchQuery] = useState('')
   const [showDigest, setShowDigest] = useState(false)
   const [showAuth, setShowAuth] = useState(false)
-  const [showSubscription, setShowSubscription] = useState(false)
   const [contentVisible, setContentVisible] = useState(false)
+  const [activeTab, setActiveTab] = useState<'hot' | 'subscription'>('hot')
+
+  // Subscription tab state
+  const [matchedGroups, setMatchedGroups] = useState<KeywordMatchGroup[]>([])
+  const [matchedLoading, setMatchedLoading] = useState(false)
+  const [matchedError, setMatchedError] = useState<string | null>(null)
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null)
+  const [showRefreshedBadge, setShowRefreshedBadge] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
 
-  const { keywords, add: addKeyword, remove: removeKeyword } = useLocalKeywords()
+  const { keywords } = useLocalKeywords()
   const auth = useAuth()
+  const serverKw = useServerKeywords(auth.user)
+  const countdown = useCountdown(COUNTDOWN_SEC)
 
-  const fetchData = async (isRefresh = false) => {
+  const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) {
       setRefreshing(true)
     } else {
@@ -43,11 +56,57 @@ export default function NewsApp() {
       setLoading(false)
       setRefreshing(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     fetchData().then(() => setContentVisible(true))
-  }, [])
+  }, [fetchData])
+
+  // Fetch matched items when countdown expires
+  const fetchMatched = useCallback(async () => {
+    if (!auth.user) return
+    setMatchedLoading(true)
+    setMatchedError(null)
+    try {
+      const result = await api.matchedItems(auth.user.token)
+      setMatchedGroups(result)
+      setLastRefreshedAt(new Date())
+      setShowRefreshedBadge(true)
+      setTimeout(() => setShowRefreshedBadge(false), 3000)
+    } catch (err: any) {
+      setMatchedError(err.message)
+    } finally {
+      setMatchedLoading(false)
+    }
+  }, [auth.user])
+
+  useEffect(() => {
+    if (countdown.isExpired && auth.user) {
+      fetchMatched().then(() => {
+        // Restart countdown for continuous polling
+        countdown.start()
+      })
+    }
+  }, [countdown.isExpired]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Trigger countdown on keyword change
+  const handleServerKeywordAdd = useCallback(
+    (kw: string) => {
+      serverKw.add(kw)
+      countdown.reset()
+      countdown.start()
+    },
+    [serverKw, countdown],
+  )
+
+  const handleServerKeywordRemove = useCallback(
+    (kw: string) => {
+      serverKw.remove(kw)
+      countdown.reset()
+      countdown.start()
+    },
+    [serverKw, countdown],
+  )
 
   // Filter and sort items
   const allItems = useMemo(() => {
@@ -56,7 +115,6 @@ export default function NewsApp() {
       if (selectedPlatform !== 'all' && g.platform.name !== selectedPlatform) continue
       items.push(...g.items)
     }
-    // Sort by crawl_count desc, rank asc
     items.sort((a, b) => b.crawlCount - a.crawlCount || a.rank - b.rank)
     return items
   }, [groups, selectedPlatform])
@@ -67,19 +125,17 @@ export default function NewsApp() {
     return allItems.filter((it) => it.title.toLowerCase().includes(q))
   }, [allItems, searchQuery])
 
-  const matchedItems = useMemo(() => {
+  const hotMatchedItems = useMemo(() => {
     if (keywords.length === 0) return []
     return filteredItems.filter((it) => matchesKeyword(it.title, keywords))
   }, [filteredItems, keywords])
 
-  const otherItems = useMemo(() => {
+  const hotOtherItems = useMemo(() => {
     if (keywords.length === 0) return filteredItems
     return filteredItems.filter((it) => !matchesKeyword(it.title, keywords))
   }, [filteredItems, keywords])
 
-  const platforms = useMemo(() => {
-    return groups.map((g) => g.platform.name)
-  }, [groups])
+  const platforms = useMemo(() => groups.map((g) => g.platform.name), [groups])
 
   if (loading) {
     return (
@@ -127,13 +183,6 @@ export default function NewsApp() {
               <TrendingUp size={18} />
             </button>
           )}
-          <button
-            onClick={() => setShowSubscription(!showSubscription)}
-            className={`p-2 rounded-lg transition ${showSubscription ? 'bg-primary/20 text-primary' : 'hover:bg-accent'}`}
-            title="订阅管理"
-          >
-            <Rss size={18} />
-          </button>
           {auth.user ? (
             <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-medium">
               <UserIcon size={14} />
@@ -154,6 +203,12 @@ export default function NewsApp() {
         </div>
       </div>
 
+      {/* Tab Bar */}
+      <div className="flex gap-2">
+        <TabButton label="热点资讯" active={activeTab === 'hot'} onClick={() => setActiveTab('hot')} />
+        <TabButton label="我的订阅" active={activeTab === 'subscription'} onClick={() => setActiveTab('subscription')} />
+      </div>
+
       {/* AI Digest */}
       {showDigest && digest && <DigestCard digest={digest} />}
 
@@ -168,86 +223,299 @@ export default function NewsApp() {
         />
       )}
 
-      {/* Subscription Panel */}
-      {showSubscription && (
-        <SubscriptionPanel
-          keywords={keywords}
-          onAdd={addKeyword}
-          onRemove={removeKeyword}
-          user={auth.user}
-        />
-      )}
-
-      {/* Search */}
-      <div className="relative">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <input
-          type="text"
-          placeholder="搜索热点..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-muted border border-border focus:outline-none focus:ring-2 focus:ring-primary/30 text-sm"
-        />
-      </div>
-
-      {/* Platform Tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-2">
-        <PlatformTab
-          label="全部"
-          active={selectedPlatform === 'all'}
-          onClick={() => setSelectedPlatform('all')}
-        />
-        {platforms.map((p) => (
-          <PlatformTab
-            key={p}
-            label={p}
-            active={selectedPlatform === p}
-            onClick={() => setSelectedPlatform(p)}
-          />
-        ))}
-      </div>
-
-      {/* Matched Items (keyword hits) */}
-      {matchedItems.length > 0 && (
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <Star size={14} className="text-primary" />
-            <span className="text-sm font-medium text-primary">订阅命中 ({matchedItems.length})</span>
+      {/* Tab Content */}
+      {activeTab === 'hot' && (
+        <>
+          {/* Search */}
+          <div className="relative">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="搜索热点..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-muted border border-border focus:outline-none focus:ring-2 focus:ring-primary/30 text-sm"
+            />
           </div>
-          <div className="space-y-2">
-            {matchedItems.map((it) => (
-              <NewsItemCard key={`${it.platformId}-${it.id}`} item={it} highlighted />
+
+          {/* Platform Tabs */}
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            <PlatformTab label="全部" active={selectedPlatform === 'all'} onClick={() => setSelectedPlatform('all')} />
+            {platforms.map((p) => (
+              <PlatformTab key={p} label={p} active={selectedPlatform === p} onClick={() => setSelectedPlatform(p)} />
             ))}
           </div>
-        </div>
+
+          {/* Local keyword matched items */}
+          {hotMatchedItems.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Star size={14} className="text-primary" />
+                <span className="text-sm font-medium text-primary">本地关键词命中 ({hotMatchedItems.length})</span>
+              </div>
+              <div className="space-y-2">
+                {hotMatchedItems.map((it) => (
+                  <NewsItemCard key={`hot-${it.platformId}-${it.id}`} item={it} highlighted />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Other Items */}
+          {hotOtherItems.length > 0 && (
+            <div className="space-y-2">
+              {hotOtherItems.map((it) => (
+                <NewsItemCard key={`hot-other-${it.platformId}-${it.id}`} item={it} />
+              ))}
+            </div>
+          )}
+
+          {filteredItems.length === 0 && <p className="text-center text-muted-foreground py-8">暂无数据</p>}
+        </>
       )}
 
-      {/* Other Items */}
-      {otherItems.length > 0 && (
-        <div className="space-y-2">
-          {otherItems.map((it) => (
-            <NewsItemCard key={`${it.platformId}-${it.id}`} item={it} />
-          ))}
-        </div>
-      )}
-
-      {filteredItems.length === 0 && (
-        <p className="text-center text-muted-foreground py-8">暂无数据</p>
+      {activeTab === 'subscription' && (
+        <SubscriptionTab
+          user={auth.user}
+          keywords={serverKw.keywords}
+          kwLoading={serverKw.loading}
+          kwSyncing={serverKw.syncing}
+          kwSyncError={serverKw.syncError}
+          onAdd={handleServerKeywordAdd}
+          onRemove={handleServerKeywordRemove}
+          countdown={countdown}
+          matchedGroups={matchedGroups}
+          matchedLoading={matchedLoading}
+          matchedError={matchedError}
+          lastRefreshedAt={lastRefreshedAt}
+          showRefreshedBadge={showRefreshedBadge}
+          onLoginClick={() => setShowAuth(true)}
+        />
       )}
     </div>
   )
 }
 
+// --- Subscription Tab ---
+
+function SubscriptionTab({
+  user,
+  keywords,
+  kwLoading,
+  kwSyncing,
+  kwSyncError,
+  onAdd,
+  onRemove,
+  countdown,
+  matchedGroups,
+  matchedLoading,
+  matchedError,
+  lastRefreshedAt,
+  showRefreshedBadge,
+  onLoginClick,
+}: {
+  user: { token: string; username: string } | null
+  keywords: string[]
+  kwLoading: boolean
+  kwSyncing: boolean
+  kwSyncError: string | null
+  onAdd: (kw: string) => void
+  onRemove: (kw: string) => void
+  countdown: ReturnType<typeof useCountdown>
+  matchedGroups: KeywordMatchGroup[]
+  matchedLoading: boolean
+  matchedError: string | null
+  lastRefreshedAt: Date | null
+  showRefreshedBadge: boolean
+  onLoginClick: () => void
+}) {
+  const [input, setInput] = useState('')
+
+  const handleAdd = () => {
+    if (input.trim()) {
+      onAdd(input.trim())
+      setInput('')
+    }
+  }
+
+  // Not logged in
+  if (!user) {
+    return (
+      <div className="text-center py-12 space-y-4">
+        <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-muted">
+          <Lock size={24} className="text-muted-foreground" />
+        </div>
+        <div>
+          <p className="text-foreground font-medium mb-1">登录后即可使用订阅功能</p>
+          <p className="text-sm text-muted-foreground">订阅关键词后，系统会自动匹配今日热点并推送</p>
+        </div>
+        <button
+          onClick={onLoginClick}
+          className="px-6 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition"
+        >
+          登录
+        </button>
+      </div>
+    )
+  }
+
+  const totalMatched = matchedGroups.reduce((sum, g) => sum + g.items.length, 0)
+
+  return (
+    <div className="space-y-4">
+      {/* Keyword Manager */}
+      <div className="p-4 rounded-lg bg-card border border-border">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-medium text-foreground">订阅关键词</h3>
+          <div className="flex items-center gap-2">
+            {kwSyncing && <span className="text-xs text-muted-foreground">同步中...</span>}
+            {kwSyncError && <span className="text-xs text-destructive">同步失败</span>}
+          </div>
+        </div>
+        <div className="flex gap-2 mb-3">
+          <input
+            type="text"
+            placeholder="添加关键词..."
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+            className="flex-1 px-3 py-2 rounded-lg bg-muted border border-border focus:outline-none focus:ring-2 focus:ring-primary/30 text-sm"
+          />
+          <button
+            onClick={handleAdd}
+            className="px-3 py-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition"
+          >
+            <Plus size={16} />
+          </button>
+        </div>
+        {kwLoading ? (
+          <p className="text-sm text-muted-foreground">加载中...</p>
+        ) : keywords.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {keywords.map((kw) => (
+              <span
+                key={kw}
+                className="inline-flex items-center gap-1 px-2 py-1 rounded bg-primary/10 text-primary text-xs"
+              >
+                {kw}
+                <button onClick={() => onRemove(kw)} className="hover:text-destructive">
+                  <X size={12} />
+                </button>
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">暂无关键词，添加后系统将自动匹配热点</p>
+        )}
+      </div>
+
+      {/* Countdown Bar */}
+      {keywords.length > 0 && (
+        <div className="p-3 rounded-lg bg-card border border-border">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs text-muted-foreground">
+              {countdown.isRunning
+                ? `${formatTime(countdown.secondsLeft)} 后自动刷新`
+                : countdown.isExpired
+                  ? matchedLoading
+                    ? '正在刷新...'
+                    : '等待刷新'
+                  : '添加关键词后开始倒计时'}
+            </span>
+            <div className="flex items-center gap-2">
+              {showRefreshedBadge && (
+                <span className="inline-flex items-center gap-1 text-xs text-primary">
+                  <CheckCircle size={12} />
+                  已刷新
+                </span>
+              )}
+              {lastRefreshedAt && !showRefreshedBadge && (
+                <span className="text-xs text-muted-foreground">
+                  上次刷新 {lastRefreshedAt.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              )}
+              {matchedLoading && <RefreshCw size={14} className="animate-spin text-primary" />}
+            </div>
+          </div>
+          <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+            <div
+              className="h-full rounded-full bg-primary transition-all duration-1000 ease-linear"
+              style={{ width: `${countdown.progress * 100}%` }}
+            />
+          </div>
+          {matchedError && <p className="text-xs text-destructive mt-2">{matchedError}</p>}
+        </div>
+      )}
+
+      {/* Grouped Results */}
+      {keywords.length > 0 && matchedGroups.length > 0 && (
+        <div className="space-y-4">
+          {totalMatched > 0 && (
+            <div className="flex items-center gap-2">
+              <Star size={14} className="text-primary" />
+              <span className="text-sm font-medium text-primary">
+                订阅命中 ({totalMatched} 条 · {matchedGroups.filter((g) => g.items.length > 0).length} 个关键词)
+              </span>
+            </div>
+          )}
+          {matchedGroups.map((group) => (
+            <div key={group.keyword}>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs font-medium px-2 py-0.5 rounded bg-primary/10 text-primary">{group.keyword}</span>
+                <span className="text-xs text-muted-foreground">{group.items.length} 条匹配</span>
+              </div>
+              {group.items.length > 0 ? (
+                <div className="space-y-2">
+                  {group.items.map((it) => (
+                    <NewsItemCard key={`sub-${group.keyword}-${it.platformId}-${it.id}`} item={it} highlighted />
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground ml-1">暂无匹配</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {keywords.length > 0 && matchedGroups.length === 0 && !matchedLoading && (
+        <p className="text-center text-muted-foreground py-8">
+          倒计时结束后将自动拉取匹配结果
+        </p>
+      )}
+    </div>
+  )
+}
+
+// --- Helpers ---
+
+function formatTime(seconds: number): string {
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return `${m}:${s.toString().padStart(2, '0')}`
+}
+
 // --- Subcomponents ---
+
+function TabButton({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+        active ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground'
+      }`}
+    >
+      {label}
+    </button>
+  )
+}
 
 function DigestCard({ digest }: { digest: Digest }) {
   return (
     <div className="p-4 rounded-lg bg-card border border-primary/20">
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-medium text-primary">AI 日报 · {digest.date}</h3>
-        <span className="text-xs text-muted-foreground">
-          {new Date(digest.generatedAt).toLocaleString('zh-CN')}
-        </span>
+        <span className="text-xs text-muted-foreground">{new Date(digest.generatedAt).toLocaleString('zh-CN')}</span>
       </div>
       <div className="text-sm text-foreground/90 leading-relaxed prose prose-invert prose-sm max-w-none prose-headings:text-primary/80 prose-strong:text-foreground prose-a:text-primary">
         <ReactMarkdown>{digest.content}</ReactMarkdown>
@@ -327,71 +595,6 @@ function AuthPanel({
       >
         {mode === 'login' ? '没有账号？注册' : '已有账号？登录'}
       </button>
-    </div>
-  )
-}
-
-function SubscriptionPanel({
-  keywords,
-  onAdd,
-  onRemove,
-  user,
-}: {
-  keywords: string[]
-  onAdd: (kw: string) => void
-  onRemove: (kw: string) => void
-  user: { token: string; username: string } | null
-}) {
-  const [input, setInput] = useState('')
-
-  const handleAdd = () => {
-    if (input.trim()) {
-      onAdd(input.trim())
-      setInput('')
-    }
-  }
-
-  return (
-    <div className="p-4 rounded-lg bg-card border border-border">
-      <h3 className="font-medium mb-3">本地关键词订阅</h3>
-      <div className="flex gap-2 mb-3">
-        <input
-          type="text"
-          placeholder="添加关键词..."
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-          className="flex-1 px-3 py-2 rounded-lg bg-muted border border-border focus:outline-none focus:ring-2 focus:ring-primary/30 text-sm"
-        />
-        <button
-          onClick={handleAdd}
-          className="px-3 py-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition"
-        >
-          <Plus size={16} />
-        </button>
-      </div>
-      {keywords.length > 0 ? (
-        <div className="flex flex-wrap gap-2">
-          {keywords.map((kw) => (
-            <span
-              key={kw}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded bg-primary/10 text-primary text-xs"
-            >
-              {kw}
-              <button onClick={() => onRemove(kw)} className="hover:text-destructive">
-                <X size={12} />
-              </button>
-            </span>
-          ))}
-        </div>
-      ) : (
-        <p className="text-sm text-muted-foreground">暂无关键词，添加后将高亮匹配的热点</p>
-      )}
-      {user && (
-        <p className="mt-3 text-xs text-muted-foreground">
-          已登录为 {user.username}，可同步关键词到服务端获取 RSS 订阅
-        </p>
-      )}
     </div>
   )
 }

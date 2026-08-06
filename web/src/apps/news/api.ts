@@ -45,6 +45,11 @@ export interface FeedInfo {
   createdAt: string
 }
 
+export interface KeywordMatchGroup {
+  keyword: string
+  items: TRNewsItem[]
+}
+
 async function fetchJSON<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BACKEND_BASE}${path}`, init)
   if (!res.ok) {
@@ -123,6 +128,11 @@ export const api = {
   resetFeed: (token: string) =>
     fetchJSON<FeedInfo>('/api/v1/news/me/feed/reset', {
       method: 'POST',
+      headers: authHeaders(token),
+    }),
+
+  matchedItems: (token: string) =>
+    fetchJSON<KeywordMatchGroup[]>('/api/v1/news/me/matched', {
       headers: authHeaders(token),
     }),
 }
