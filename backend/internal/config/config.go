@@ -28,7 +28,7 @@ func Load() Config {
 	return Config{
 		Host:              os.Getenv("HOST"), // empty = all interfaces; set 127.0.0.1 behind nginx
 		Port:              getenv("PORT", "8080"),
-		CORSOrigins:       splitCSV(getenv("CORS_ORIGINS", "http://localhost:5173,https://foreverart.github.io,https://app.foreverart.vip")),
+		CORSOrigins:       splitCSV(getenv("CORS_ORIGINS", "http://localhost:5173,https://foreverart.github.io,https://app.foreverart.vip,https://news.foreverart.vip")),
 		LLMBaseURL:        strings.TrimRight(getenv("LLM_BASE_URL", "https://api.openai.com/v1"), "/"),
 		LLMAPIKey:         os.Getenv("LLM_API_KEY"),
 		LLMModel:          getenv("LLM_MODEL", "gpt-4o-mini"),
