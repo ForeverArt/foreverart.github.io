@@ -46,9 +46,9 @@ func (ds *DigestService) GetDigest(w http.ResponseWriter, r *http.Request) {
 	d, err := ds.store.GetDigest(date)
 	if err == nil {
 		jsonResp(w, http.StatusOK, map[string]any{
-			"date":         d.Date,
-			"content":      d.Content,
-			"generated_at": d.GeneratedAt,
+			"date":        d.Date,
+			"content":     d.Content,
+			"generatedAt": d.GeneratedAt,
 		})
 		return
 	}
@@ -63,9 +63,9 @@ func (ds *DigestService) GetDigest(w http.ResponseWriter, r *http.Request) {
 		}
 		_ = ds.store.PutDigest(date, content)
 		jsonResp(w, http.StatusOK, map[string]any{
-			"date":         date,
-			"content":      content,
-			"generated_at": time.Now().UTC(),
+			"date":        date,
+			"content":     content,
+			"generatedAt": time.Now().UTC(),
 		})
 		return
 	}
@@ -84,9 +84,9 @@ func (ds *DigestService) RefreshDigest(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = ds.store.PutDigest(date, content)
 	jsonResp(w, http.StatusOK, map[string]any{
-		"date":         date,
-		"content":      content,
-		"generated_at": time.Now().UTC(),
+		"date":        date,
+		"content":     content,
+		"generatedAt": time.Now().UTC(),
 	})
 }
 

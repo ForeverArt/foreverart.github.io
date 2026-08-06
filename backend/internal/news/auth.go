@@ -74,7 +74,7 @@ func (a *Auth) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	jsonResp(w, http.StatusCreated, map[string]any{
-		"user_id":  u.ID,
+		"userId":   u.ID,
 		"username": u.Username,
 		"token":    token,
 	})
@@ -102,7 +102,7 @@ func (a *Auth) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	jsonResp(w, http.StatusOK, map[string]any{
-		"user_id":  u.ID,
+		"userId":   u.ID,
 		"username": u.Username,
 		"token":    token,
 	})

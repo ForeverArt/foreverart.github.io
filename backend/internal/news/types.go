@@ -36,43 +36,43 @@ type FeedToken struct {
 
 // Digest is a cached AI-generated daily summary.
 type Digest struct {
-	ID          int64
-	Date        string // "2006-01-02"
-	Content     string // markdown
-	GeneratedAt time.Time
+	ID          int64     `json:"-"`
+	Date        string    `json:"date"` // "2006-01-02"
+	Content     string    `json:"content"` // markdown
+	GeneratedAt time.Time `json:"generatedAt"`
 }
 
 // --- TrendRadar read-only types ---
 
 // TRPlatform mirrors TrendRadar's platforms table.
 type TRPlatform struct {
-	ID   string
-	Name string
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }
 
 // TRNewsItem mirrors TrendRadar's news_items table.
 type TRNewsItem struct {
-	ID            string
-	Title         string
-	PlatformID    string
-	PlatformName  string
-	Rank          int
-	URL           string
-	FirstCrawlAt  string
-	LastCrawlAt   string
-	CrawlCount    int
+	ID            string `json:"id"`
+	Title         string `json:"title"`
+	PlatformID    string `json:"platformId"`
+	PlatformName  string `json:"platformName"`
+	Rank          int    `json:"rank"`
+	URL           string `json:"url"`
+	FirstCrawlAt  string `json:"firstCrawlAt"`
+	LastCrawlAt   string `json:"lastCrawlAt"`
+	CrawlCount    int    `json:"crawlCount"`
 }
 
 // TRLatestGroup is a platform + its current news items for display.
 type TRLatestGroup struct {
-	Platform TRPlatform
-	Items    []TRNewsItem
+	Platform TRPlatform `json:"platform"`
+	Items    []TRNewsItem `json:"items"`
 }
 
 // TRRankPoint is a single point on a news item's rank history curve.
 type TRRankPoint struct {
-	Rank      int
-	CrawlTime string
+	Rank      int    `json:"rank"`
+	CrawlTime string `json:"crawlTime"`
 }
 
 // TRDate is an available data date (from directory listing).

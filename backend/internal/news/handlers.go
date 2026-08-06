@@ -199,9 +199,9 @@ func (h *Handlers) myFeed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	jsonResp(w, http.StatusOK, map[string]any{
-		"token":      ft.Token,
-		"url":        "/api/v1/news/feed/" + ft.Token + ".xml",
-		"created_at": ft.CreatedAt,
+		"token":     ft.Token,
+		"url":       "/api/v1/news/feed/" + ft.Token + ".xml",
+		"createdAt": ft.CreatedAt,
 	})
 }
 
@@ -217,8 +217,8 @@ func (h *Handlers) resetFeed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	jsonResp(w, http.StatusOK, map[string]any{
-		"token":      ft.Token,
-		"url":        "/api/v1/news/feed/" + ft.Token + ".xml",
-		"created_at": ft.CreatedAt,
+		"token":     ft.Token,
+		"url":       "/api/v1/news/feed/" + ft.Token + ".xml",
+		"createdAt": ft.CreatedAt,
 	})
 }
