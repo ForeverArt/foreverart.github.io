@@ -33,7 +33,7 @@ export function useServerKeywords(user: User | null): UseServerKeywordsReturn {
     api
       .myKeywords(user.token)
       .then((res) => {
-        if (!cancelled) setKeywords(res.keywords)
+        if (!cancelled) setKeywords(res.keywords ?? [])
       })
       .catch(() => {
         // Silently fail on load — user can still add keywords

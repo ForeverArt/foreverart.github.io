@@ -143,7 +143,7 @@ func (s *Store) GetKeywords(userID int64) ([]string, error) {
 		return nil, err
 	}
 	defer rows.Close()
-	var out []string
+	out := make([]string, 0)
 	for rows.Next() {
 		var kw string
 		if err := rows.Scan(&kw); err != nil {
