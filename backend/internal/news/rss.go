@@ -136,7 +136,7 @@ func buildFeed(username string, keywords []string, news []TRNewsItem, digest *Di
 			Link:        it.URL,
 			Description: fmt.Sprintf("平台：%s · 排名：%d · 抓取次数：%d", it.PlatformName, it.Rank, it.CrawlCount),
 			PubDate:     parseTimeRFC1123(it.FirstCrawlAt),
-			GUID:        fmt.Sprintf("news-%d-%d", it.PlatformID, it.ID),
+			GUID:        fmt.Sprintf("news-%s-%s", it.PlatformID, it.ID),
 		})
 	}
 

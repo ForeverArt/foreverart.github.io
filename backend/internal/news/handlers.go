@@ -116,8 +116,7 @@ func (h *Handlers) itemHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	idStr := parts[len(parts)-2]
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
+	if idStr == "" {
 		jsonError(w, http.StatusBadRequest, "invalid item id")
 		return
 	}
@@ -125,7 +124,7 @@ func (h *Handlers) itemHistory(w http.ResponseWriter, r *http.Request) {
 	if date == "" {
 		date = todayStr()
 	}
-	points, err := h.tr.RankHistory(date, id)
+	points, err := h.tr.RankHistory(date, idStr)
 	if err != nil {
 		jsonError(w, http.StatusInternalServerError, err.Error())
 		return

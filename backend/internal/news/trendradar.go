@@ -167,7 +167,7 @@ func (tr *TrendRadarReader) QueryItems(date, platform, keyword string, limit int
 }
 
 // RankHistory returns the rank history curve for a specific news item.
-func (tr *TrendRadarReader) RankHistory(date string, itemID int64) ([]TRRankPoint, error) {
+func (tr *TrendRadarReader) RankHistory(date string, itemID string) ([]TRRankPoint, error) {
 	dbPath := tr.findDB(date)
 	if dbPath == "" {
 		return nil, nil
@@ -276,7 +276,7 @@ func (tr *TrendRadarReader) findDB(date string) string {
 	return ""
 }
 
-func (tr *TrendRadarReader) queryNewsByPlatform(db *sql.DB, platformID int64, crawlTime string) ([]TRNewsItem, error) {
+func (tr *TrendRadarReader) queryNewsByPlatform(db *sql.DB, platformID string, crawlTime string) ([]TRNewsItem, error) {
 	rows, err := db.Query(`
 		SELECT n.id, n.title, n.platform_id, '', n.rank, n.url,
 		       n.first_crawl_time, n.last_crawl_time, n.crawl_count

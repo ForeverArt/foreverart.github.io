@@ -46,15 +46,15 @@ type Digest struct {
 
 // TRPlatform mirrors TrendRadar's platforms table.
 type TRPlatform struct {
-	ID   int64
+	ID   string
 	Name string
 }
 
 // TRNewsItem mirrors TrendRadar's news_items table.
 type TRNewsItem struct {
-	ID            int64
+	ID            string
 	Title         string
-	PlatformID    int64
+	PlatformID    string
 	PlatformName  string
 	Rank          int
 	URL           string
