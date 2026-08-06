@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo } from 'react'
-import { Search, RefreshCw, Rss, LogIn, LogOut, Plus, X, TrendingUp, Star } from 'lucide-react'
+import { useState, useEffect, useMemo, useRef } from 'react'
+import { Search, RefreshCw, Rss, LogIn, LogOut, Plus, X, TrendingUp, Star, User as UserIcon } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
 import { api, type TRLatestGroup, type TRNewsItem, type Digest } from './api'
 import { useLocalKeywords, matchesKeyword } from './useLocalKeywords'
 import { useAuth } from './useAuth'
@@ -8,32 +9,44 @@ export default function NewsApp() {
   const [groups, setGroups] = useState<TRLatestGroup[]>([])
   const [digest, setDigest] = useState<Digest | null>(null)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedPlatform, setSelectedPlatform] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [showDigest, setShowDigest] = useState(false)
   const [showAuth, setShowAuth] = useState(false)
   const [showSubscription, setShowSubscription] = useState(false)
+  const [contentVisible, setContentVisible] = useState(false)
+  const contentRef = useRef<HTMLDivElement>(null)
 
   const { keywords, add: addKeyword, remove: removeKeyword } = useLocalKeywords()
   const auth = useAuth()
 
-  const fetchData = async () => {
-    setLoading(true)
+  const fetchData = async (isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshing(true)
+    } else {
+      setLoading(true)
+    }
     setError(null)
     try {
       const [g, d] = await Promise.all([api.latest(), api.digest().catch(() => null)])
       setGroups(g || [])
       setDigest(d)
+      if (isRefresh) {
+        setContentVisible(false)
+        requestAnimationFrame(() => setContentVisible(true))
+      }
     } catch (err: any) {
       setError(err.message)
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }
 
   useEffect(() => {
-    fetchData()
+    fetchData().then(() => setContentVisible(true))
   }, [])
 
   // Filter and sort items
@@ -82,7 +95,7 @@ export default function NewsApp() {
     return (
       <div className="text-center py-12">
         <p className="text-destructive mb-4">加载失败：{error}</p>
-        <button onClick={fetchData} className="px-4 py-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition">
+        <button onClick={() => fetchData()} className="px-4 py-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition">
           重试
         </button>
       </div>
@@ -90,20 +103,20 @@ export default function NewsApp() {
   }
 
   return (
-    <div className="space-y-6">
+    <div ref={contentRef} className={`space-y-6 transition-opacity duration-300 ${contentVisible ? 'opacity-100' : 'opacity-50'}`}>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">热点资讯</h1>
           <p className="text-sm text-muted-foreground mt-1">多平台热榜聚合 · 关键词订阅 · AI 日报</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <button
-            onClick={fetchData}
+            onClick={() => fetchData(true)}
             className="p-2 rounded-lg hover:bg-accent transition"
             title="刷新"
           >
-            <RefreshCw size={18} />
+            <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} />
           </button>
           {digest && (
             <button
@@ -122,9 +135,13 @@ export default function NewsApp() {
             <Rss size={18} />
           </button>
           {auth.user ? (
-            <button onClick={auth.logout} className="p-2 rounded-lg hover:bg-accent transition" title="退出">
-              <LogOut size={18} />
-            </button>
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-medium">
+              <UserIcon size={14} />
+              <span>{auth.user.username}</span>
+              <button onClick={auth.logout} className="ml-1 hover:text-destructive transition" title="退出">
+                <LogOut size={14} />
+              </button>
+            </div>
           ) : (
             <button
               onClick={() => setShowAuth(!showAuth)}
@@ -232,8 +249,8 @@ function DigestCard({ digest }: { digest: Digest }) {
           {new Date(digest.generatedAt).toLocaleString('zh-CN')}
         </span>
       </div>
-      <div className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed">
-        {digest.content}
+      <div className="text-sm text-foreground/90 leading-relaxed prose prose-invert prose-sm max-w-none prose-headings:text-primary/80 prose-strong:text-foreground prose-a:text-primary">
+        <ReactMarkdown>{digest.content}</ReactMarkdown>
       </div>
     </div>
   )
