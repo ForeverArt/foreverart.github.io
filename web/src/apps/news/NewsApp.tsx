@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
-import { Search, RefreshCw, LogIn, LogOut, Plus, X, TrendingUp, Star, User as UserIcon, Lock, CheckCircle } from 'lucide-react'
+import { Search, RefreshCw, LogIn, LogOut, Plus, X, TrendingUp, Star, User as UserIcon, Lock, CheckCircle, Globe } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
-import { api, type TRLatestGroup, type TRNewsItem, type Digest, type KeywordMatchGroupEx, type ScoredNewsItem } from './api'
+import { api, type TRLatestGroup, type TRNewsItem, type Digest, type KeywordMatchGroupEx, type ScoredNewsItem, type UserSettings } from './api'
 import { ChatPanel } from './components/ChatPanel'
 import { FeedbackButtons } from './components/FeedbackButtons'
 import { usePreferences } from './usePreferences'
@@ -11,6 +11,17 @@ import { useCountdown } from './useCountdown'
 import { useAuth } from './useAuth'
 
 const COUNTDOWN_SEC = 15
+
+// Chinese platforms (hardcoded list)
+const CHINESE_PLATFORMS = [
+  '微博', '知乎', '百度', 'B站', '抖音', '快手', '小红书', '豆瓣',
+  '今日头条', '网易新闻', '搜狐新闻', '腾讯新闻', '新浪新闻', '澎湃新闻',
+  '36氪', '少数派', 'IT之家', '虎嗅', '极客公园',
+]
+
+function isChinesePlatform(name: string): boolean {
+  return CHINESE_PLATFORMS.includes(name)
+}
 
 export default function NewsApp() {
   const [groups, setGroups] = useState<TRLatestGroup[]>([])
@@ -24,6 +35,7 @@ export default function NewsApp() {
   const [showAuth, setShowAuth] = useState(false)
   const [contentVisible, setContentVisible] = useState(false)
   const [activeTab, setActiveTab] = useState<'hot' | 'subscription'>('hot')
+  const [settings, setSettings] = useState<UserSettings>({ showForeignPlatforms: false })
 
   // Subscription tab state
   const [matchedGroups, setMatchedGroups] = useState<KeywordMatchGroupEx[]>([])
@@ -64,6 +76,31 @@ export default function NewsApp() {
   useEffect(() => {
     fetchData().then(() => setContentVisible(true))
   }, [fetchData])
+
+  // Load user settings when auth user changes
+  useEffect(() => {
+    if (!auth.user) {
+      setSettings({ showForeignPlatforms: false })
+      return
+    }
+    api.getSettings(auth.user.token).then((s) => {
+      setSettings(s)
+    }).catch(() => {
+      setSettings({ showForeignPlatforms: false })
+    })
+  }, [auth.user])
+
+  // Save settings helper
+  const saveSettings = useCallback(async (newSettings: UserSettings) => {
+    setSettings(newSettings)
+    if (auth.user) {
+      try {
+        await api.setSettings(auth.user.token, newSettings)
+      } catch {
+        // Silently fail on save
+      }
+    }
+  }, [auth.user])
 
   // Fetch matched items when countdown expires
   const fetchMatched = useCallback(async () => {
@@ -115,12 +152,16 @@ export default function NewsApp() {
   const allItems = useMemo(() => {
     const items: TRNewsItem[] = []
     for (const g of groups) {
+      // Filter by platform visibility based on settings
+      if (!settings.showForeignPlatforms && !isChinesePlatform(g.platform.name)) {
+        continue
+      }
       if (selectedPlatform !== 'all' && g.platform.name !== selectedPlatform) continue
       items.push(...g.items)
     }
     items.sort((a, b) => b.crawlCount - a.crawlCount || a.rank - b.rank)
     return items
-  }, [groups, selectedPlatform])
+  }, [groups, selectedPlatform, settings.showForeignPlatforms])
 
   const filteredItems = useMemo(() => {
     if (!searchQuery) return allItems
@@ -138,7 +179,18 @@ export default function NewsApp() {
     return filteredItems.filter((it) => !matchesKeyword(it.title, keywords))
   }, [filteredItems, keywords])
 
-  const platforms = useMemo(() => groups.map((g) => g.platform.name), [groups])
+  const platforms = useMemo(() => {
+    const names = groups.map((g) => g.platform.name)
+    if (!settings.showForeignPlatforms) {
+      return names.filter(isChinesePlatform)
+    }
+    return names
+  }, [groups, settings.showForeignPlatforms])
+
+  // Check if there are foreign platforms available
+  const hasForeignPlatforms = useMemo(() => {
+    return groups.some((g) => !isChinesePlatform(g.platform.name))
+  }, [groups])
 
   if (loading) {
     return (
@@ -242,6 +294,20 @@ export default function NewsApp() {
           </div>
 
           {/* Platform Tabs */}
+          {hasForeignPlatforms && (
+            <div className="flex items-center gap-2 mb-2">
+              <Globe size={14} className="text-muted-foreground" />
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={settings.showForeignPlatforms}
+                  onChange={(e) => saveSettings({ ...settings, showForeignPlatforms: e.target.checked })}
+                  className="rounded border-border text-primary focus:ring-primary/30"
+                />
+                <span className="text-xs text-muted-foreground">显示外文媒体</span>
+              </label>
+            </div>
+          )}
           <div className="flex gap-2 overflow-x-auto pb-2">
             <PlatformTab label="全部" active={selectedPlatform === 'all'} onClick={() => setSelectedPlatform('all')} />
             {platforms.map((p) => (
@@ -293,6 +359,7 @@ export default function NewsApp() {
           lastRefreshedAt={lastRefreshedAt}
           showRefreshedBadge={showRefreshedBadge}
           onLoginClick={() => setShowAuth(true)}
+          onTabEnter={fetchMatched}
         />
       )}
     </div>
@@ -316,6 +383,7 @@ function SubscriptionTab({
   lastRefreshedAt,
   showRefreshedBadge,
   onLoginClick,
+  onTabEnter,
 }: {
   user: { token: string; username: string } | null
   keywords: string[]
@@ -331,9 +399,18 @@ function SubscriptionTab({
   lastRefreshedAt: Date | null
   showRefreshedBadge: boolean
   onLoginClick: () => void
+  onTabEnter: () => void
 }) {
   const [input, setInput] = useState('')
   const preferences = usePreferences(user?.token ?? null)
+
+  // Fetch matched items on tab enter if keywords exist
+  useEffect(() => {
+    if (user && keywords.length > 0) {
+      onTabEnter()
+      countdown.start()
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePreferenceUpdated = () => {
     preferences.refetch()

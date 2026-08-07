@@ -43,7 +43,7 @@ func (h *Handlers) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/news/auth/register", h.auth.Register)
 	mux.HandleFunc("/api/v1/news/auth/login", h.auth.Login)
 
-	// Protected: keywords, feed management, matched items, preferences, chat, feedback
+	// Protected: keywords, feed management, matched items, preferences, chat, feedback, settings
 	mux.HandleFunc("/api/v1/news/me/keywords", h.auth.RequireAuth(h.myKeywords))
 	mux.HandleFunc("/api/v1/news/me/matched", h.auth.RequireAuth(h.myMatched))
 	mux.HandleFunc("/api/v1/news/me/feed", h.auth.RequireAuth(h.myFeed))
@@ -53,6 +53,7 @@ func (h *Handlers) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/news/me/conversations", h.auth.RequireAuth(h.myConversations))
 	mux.HandleFunc("/api/v1/news/me/conversations/", h.auth.RequireAuth(h.myConversationMessages))
 	mux.HandleFunc("/api/v1/news/me/feedback", h.auth.RequireAuth(h.myFeedback))
+	mux.HandleFunc("/api/v1/news/me/settings", h.auth.RequireAuth(h.mySettings))
 
 	// RSS feed (public, capability URL)
 	mux.HandleFunc("/api/v1/news/feed/", h.rss.ServeFeed)
@@ -455,4 +456,30 @@ func (h *Handlers) myFeedback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	jsonResp(w, http.StatusOK, map[string]bool{"success": true})
+}
+
+func (h *Handlers) mySettings(w http.ResponseWriter, r *http.Request) {
+	userID := getUserID(r)
+	switch r.Method {
+	case http.MethodGet:
+		settings, err := h.store.GetSettings(userID)
+		if err != nil {
+			jsonError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		jsonResp(w, http.StatusOK, settings)
+	case http.MethodPut:
+		var settings UserSettings
+		if err := json.NewDecoder(r.Body).Decode(&settings); err != nil {
+			jsonError(w, http.StatusBadRequest, "invalid json")
+			return
+		}
+		if err := h.store.SetSettings(userID, &settings); err != nil {
+			jsonError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		jsonResp(w, http.StatusOK, settings)
+	default:
+		jsonError(w, http.StatusMethodNotAllowed, "GET or PUT only")
+	}
 }

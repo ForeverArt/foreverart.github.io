@@ -101,6 +101,10 @@ export interface FeedbackRequest {
   feedbackType: 'more_like_this' | 'not_interested'
 }
 
+export interface UserSettings {
+  showForeignPlatforms: boolean
+}
+
 async function fetchJSON<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BACKEND_BASE}${path}`, init)
   if (!res.ok) {
@@ -217,5 +221,17 @@ export const api = {
       method: 'POST',
       headers: authHeaders(token),
       body: JSON.stringify(req),
+    }),
+
+  getSettings: (token: string) =>
+    fetchJSON<UserSettings>('/api/v1/news/me/settings', {
+      headers: authHeaders(token),
+    }),
+
+  setSettings: (token: string, settings: UserSettings) =>
+    fetchJSON<UserSettings>('/api/v1/news/me/settings', {
+      method: 'PUT',
+      headers: authHeaders(token),
+      body: JSON.stringify(settings),
     }),
 }

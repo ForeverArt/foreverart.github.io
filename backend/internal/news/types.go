@@ -147,6 +147,11 @@ type AllPreferences struct {
 	Keywords map[string]PreferenceDoc `json:"keywords"`
 }
 
+// UserSettings holds user-level UI preferences.
+type UserSettings struct {
+	ShowForeignPlatforms bool `json:"showForeignPlatforms"`
+}
+
 // TRDate is an available data date (from directory listing).
 type TRDate struct {
 	Date string

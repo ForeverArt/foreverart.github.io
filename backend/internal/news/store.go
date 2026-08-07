@@ -95,6 +95,10 @@ func (s *Store) migrate() error {
 			processed INTEGER NOT NULL DEFAULT 0,
 			created_at DATETIME NOT NULL DEFAULT (datetime('now'))
 		);
+		CREATE TABLE IF NOT EXISTS news_user_settings (
+			user_id INTEGER PRIMARY KEY REFERENCES news_users(id) ON DELETE CASCADE,
+			settings_json TEXT NOT NULL DEFAULT '{}'
+		);
 	`)
 	return err
 }
@@ -555,6 +559,37 @@ func (s *Store) MarkFeedbackProcessed(ids []int64) error {
 	_, err := s.db.Exec(
 		fmt.Sprintf(`UPDATE news_feedback_log SET processed = 1 WHERE id IN (%s)`, strings.Join(placeholders, ",")),
 		args...,
+	)
+	return err
+}
+
+// --- User Settings ---
+
+// GetSettings loads user settings.
+func (s *Store) GetSettings(userID int64) (*UserSettings, error) {
+	var settingsJSON string
+	err := s.db.QueryRow(
+		`SELECT settings_json FROM news_user_settings WHERE user_id = ?`,
+		userID,
+	).Scan(&settingsJSON)
+	if err == sql.ErrNoRows {
+		return &UserSettings{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var settings UserSettings
+	_ = json.Unmarshal([]byte(settingsJSON), &settings)
+	return &settings, nil
+}
+
+// SetSettings saves user settings.
+func (s *Store) SetSettings(userID int64, settings *UserSettings) error {
+	docBytes, _ := json.Marshal(settings)
+	_, err := s.db.Exec(
+		`INSERT INTO news_user_settings (user_id, settings_json) VALUES (?, ?)
+		 ON CONFLICT(user_id) DO UPDATE SET settings_json = excluded.settings_json`,
+		userID, string(docBytes),
 	)
 	return err
 }
