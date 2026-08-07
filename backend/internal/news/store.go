@@ -164,10 +164,10 @@ func (s *Store) GetAllSubscriptions() ([]struct {
 		return nil, err
 	}
 	defer rows.Close()
-	var out []struct {
+	out := make([]struct {
 		UserID  int64
 		Keyword string
-	}
+	}, 0)
 	for rows.Next() {
 		var u struct {
 			UserID  int64
