@@ -81,6 +81,72 @@ type KeywordMatchGroup struct {
 	Items   []TRNewsItem `json:"items"`
 }
 
+// ScoredNewsItem extends TRNewsItem with preference-derived signals.
+type ScoredNewsItem struct {
+	TRNewsItem
+	RelevanceScore   int      `json:"relevanceScore"`
+	MatchedInterests []string `json:"matchedInterests"`
+}
+
+// KeywordMatchGroupEx is a keyword + its scored matched items.
+type KeywordMatchGroupEx struct {
+	Keyword string           `json:"keyword"`
+	Items   []ScoredNewsItem `json:"items"`
+}
+
+// PreferenceDoc holds a user's structured preferences.
+type PreferenceDoc struct {
+	Interests       []string `json:"interests"`
+	Dislikes        []string `json:"dislikes"`
+	PreferredAngles []string `json:"preferredAngles"`
+	Notes           string   `json:"notes"`
+}
+
+// PreferenceRecord is the stored preference row for a user+keyword.
+type PreferenceRecord struct {
+	ID            int64
+	UserID        int64
+	Keyword       string // empty = global
+	PreferenceDoc string // JSON
+	UpdatedAt     time.Time
+}
+
+// Conversation is a preference chat conversation.
+type Conversation struct {
+	ID        int64
+	UserID    int64
+	Keyword   string // empty = global
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+// ConversationMessage is a single chat message.
+type ConversationMessage struct {
+	ID            int64
+	ConversationID int64
+	Role          string // "user" or "assistant"
+	Content       string
+	CreatedAt     time.Time
+}
+
+// Feedback records a user's explicit like/dislike on a matched item.
+type Feedback struct {
+	ID           int64
+	UserID       int64
+	NewsItemID   string
+	NewsItemTitle string
+	Keyword      string
+	FeedbackType string // "more_like_this" or "not_interested"
+	Processed    bool
+	CreatedAt    time.Time
+}
+
+// AllPreferences aggregates global and per-keyword preferences.
+type AllPreferences struct {
+	Global   PreferenceDoc            `json:"global"`
+	Keywords map[string]PreferenceDoc `json:"keywords"`
+}
+
 // TRDate is an available data date (from directory listing).
 type TRDate struct {
 	Date string

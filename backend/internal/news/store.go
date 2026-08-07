@@ -4,7 +4,9 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -60,6 +62,38 @@ func (s *Store) migrate() error {
 			date TEXT UNIQUE NOT NULL,
 			content TEXT NOT NULL,
 			generated_at DATETIME NOT NULL
+		);
+		CREATE TABLE IF NOT EXISTS news_topic_preferences (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER NOT NULL REFERENCES news_users(id) ON DELETE CASCADE,
+			keyword TEXT NOT NULL DEFAULT '',
+			preference_doc TEXT NOT NULL DEFAULT '{}',
+			updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
+			UNIQUE(user_id, keyword)
+		);
+		CREATE TABLE IF NOT EXISTS news_conversations (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER NOT NULL REFERENCES news_users(id) ON DELETE CASCADE,
+			keyword TEXT NOT NULL DEFAULT '',
+			created_at DATETIME NOT NULL DEFAULT (datetime('now')),
+			updated_at DATETIME NOT NULL DEFAULT (datetime('now'))
+		);
+		CREATE TABLE IF NOT EXISTS news_conversation_messages (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			conversation_id INTEGER NOT NULL REFERENCES news_conversations(id) ON DELETE CASCADE,
+			role TEXT NOT NULL,
+			content TEXT NOT NULL,
+			created_at DATETIME NOT NULL DEFAULT (datetime('now'))
+		);
+		CREATE TABLE IF NOT EXISTS news_feedback_log (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER NOT NULL REFERENCES news_users(id) ON DELETE CASCADE,
+			news_item_id TEXT NOT NULL,
+			news_item_title TEXT NOT NULL,
+			keyword TEXT NOT NULL DEFAULT '',
+			feedback_type TEXT NOT NULL,
+			processed INTEGER NOT NULL DEFAULT 0,
+			created_at DATETIME NOT NULL DEFAULT (datetime('now'))
 		);
 	`)
 	return err
@@ -304,4 +338,223 @@ func trim(s string) string {
 		s = s[:len(s)-1]
 	}
 	return s
+}
+
+// --- Preferences ---
+
+// GetPreference loads a preference record for a user+keyword.
+func (s *Store) GetPreference(userID int64, keyword string) (*PreferenceRecord, error) {
+	var r PreferenceRecord
+	err := s.db.QueryRow(
+		`SELECT id, user_id, keyword, preference_doc, updated_at FROM news_topic_preferences WHERE user_id = ? AND keyword = ?`,
+		userID, keyword,
+	).Scan(&r.ID, &r.UserID, &r.Keyword, &r.PreferenceDoc, &r.UpdatedAt)
+	if err == sql.ErrNoRows {
+		return nil, ErrNotFound
+	}
+	return &r, err
+}
+
+// SetPreference saves or updates a preference record.
+func (s *Store) SetPreference(userID int64, keyword, doc string) error {
+	_, err := s.db.Exec(
+		`INSERT INTO news_topic_preferences (user_id, keyword, preference_doc, updated_at)
+		 VALUES (?, ?, ?, datetime('now'))
+		 ON CONFLICT(user_id, keyword) DO UPDATE SET preference_doc = excluded.preference_doc, updated_at = excluded.updated_at`,
+		userID, keyword, doc,
+	)
+	return err
+}
+
+// GetAllPreferences returns global + per-keyword preferences for a user.
+func (s *Store) GetAllPreferences(userID int64) (*AllPreferences, error) {
+	rows, err := s.db.Query(
+		`SELECT keyword, preference_doc FROM news_topic_preferences WHERE user_id = ?`,
+		userID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := &AllPreferences{
+		Global:   PreferenceDoc{},
+		Keywords: make(map[string]PreferenceDoc),
+	}
+	for rows.Next() {
+		var keyword, doc string
+		if err := rows.Scan(&keyword, &doc); err != nil {
+			return nil, err
+		}
+		var p PreferenceDoc
+		_ = json.Unmarshal([]byte(doc), &p)
+		if keyword == "" {
+			out.Global = p
+		} else {
+			out.Keywords[keyword] = p
+		}
+	}
+	return out, rows.Err()
+}
+
+// --- Conversations ---
+
+// GetConversation loads a conversation by user and id.
+func (s *Store) GetConversation(userID, convID int64) (*Conversation, error) {
+	var c Conversation
+	err := s.db.QueryRow(
+		`SELECT id, user_id, keyword, created_at, updated_at FROM news_conversations WHERE id = ? AND user_id = ?`,
+		convID, userID,
+	).Scan(&c.ID, &c.UserID, &c.Keyword, &c.CreatedAt, &c.UpdatedAt)
+	if err == sql.ErrNoRows {
+		return nil, ErrNotFound
+	}
+	return &c, err
+}
+
+// GetOrCreateConversation returns the existing conversation for user+keyword, or creates one.
+func (s *Store) GetOrCreateConversation(userID int64, keyword string) (*Conversation, error) {
+	var c Conversation
+	err := s.db.QueryRow(
+		`SELECT id, user_id, keyword, created_at, updated_at FROM news_conversations WHERE user_id = ? AND keyword = ?`,
+		userID, keyword,
+	).Scan(&c.ID, &c.UserID, &c.Keyword, &c.CreatedAt, &c.UpdatedAt)
+	if err == nil {
+		return &c, nil
+	}
+	if err != sql.ErrNoRows {
+		return nil, err
+	}
+	res, err := s.db.Exec(
+		`INSERT INTO news_conversations (user_id, keyword) VALUES (?, ?)`,
+		userID, keyword,
+	)
+	if err != nil {
+		return nil, err
+	}
+	id, _ := res.LastInsertId()
+	return &Conversation{ID: id, UserID: userID, Keyword: keyword, CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC()}, nil
+}
+
+// ListConversations returns all conversations for a user, optionally filtered by keyword.
+func (s *Store) ListConversations(userID int64, keyword string) ([]Conversation, error) {
+	var rows *sql.Rows
+	var err error
+	if keyword == "" {
+		rows, err = s.db.Query(
+			`SELECT id, user_id, keyword, created_at, updated_at FROM news_conversations WHERE user_id = ? ORDER BY updated_at DESC`,
+			userID,
+		)
+	} else {
+		rows, err = s.db.Query(
+			`SELECT id, user_id, keyword, created_at, updated_at FROM news_conversations WHERE user_id = ? AND keyword = ? ORDER BY updated_at DESC`,
+			userID, keyword,
+		)
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]Conversation, 0)
+	for rows.Next() {
+		var c Conversation
+		if err := rows.Scan(&c.ID, &c.UserID, &c.Keyword, &c.CreatedAt, &c.UpdatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+// AddMessage appends a message to a conversation.
+func (s *Store) AddMessage(convID int64, role, content string) (int64, error) {
+	res, err := s.db.Exec(
+		`INSERT INTO news_conversation_messages (conversation_id, role, content) VALUES (?, ?, ?)`,
+		convID, role, content,
+	)
+	if err != nil {
+		return 0, err
+	}
+	_, err = s.db.Exec(
+		`UPDATE news_conversations SET updated_at = datetime('now') WHERE id = ?`,
+		convID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return res.LastInsertId()
+}
+
+// GetMessages returns all messages for a conversation in chronological order.
+func (s *Store) GetMessages(convID int64) ([]ConversationMessage, error) {
+	rows, err := s.db.Query(
+		`SELECT id, conversation_id, role, content, created_at FROM news_conversation_messages WHERE conversation_id = ? ORDER BY id ASC`,
+		convID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]ConversationMessage, 0)
+	for rows.Next() {
+		var m ConversationMessage
+		if err := rows.Scan(&m.ID, &m.ConversationID, &m.Role, &m.Content, &m.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, m)
+	}
+	return out, rows.Err()
+}
+
+// --- Feedback ---
+
+// AddFeedback records a feedback entry.
+func (s *Store) AddFeedback(userID int64, itemID, title, keyword, feedbackType string) error {
+	_, err := s.db.Exec(
+		`INSERT INTO news_feedback_log (user_id, news_item_id, news_item_title, keyword, feedback_type) VALUES (?, ?, ?, ?, ?)`,
+		userID, itemID, title, keyword, feedbackType,
+	)
+	return err
+}
+
+// GetUnprocessedFeedback returns unprocessed feedback for a user.
+func (s *Store) GetUnprocessedFeedback(userID int64) ([]Feedback, error) {
+	rows, err := s.db.Query(
+		`SELECT id, user_id, news_item_id, news_item_title, keyword, feedback_type, processed, created_at FROM news_feedback_log WHERE user_id = ? AND processed = 0 ORDER BY created_at ASC`,
+		userID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]Feedback, 0)
+	for rows.Next() {
+		var f Feedback
+		var processed int
+		if err := rows.Scan(&f.ID, &f.UserID, &f.NewsItemID, &f.NewsItemTitle, &f.Keyword, &f.FeedbackType, &processed, &f.CreatedAt); err != nil {
+			return nil, err
+		}
+		f.Processed = processed != 0
+		out = append(out, f)
+	}
+	return out, rows.Err()
+}
+
+// MarkFeedbackProcessed marks feedback entries as processed.
+func (s *Store) MarkFeedbackProcessed(ids []int64) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	// Build placeholders
+	placeholders := make([]string, len(ids))
+	args := make([]any, len(ids))
+	for i, id := range ids {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+	_, err := s.db.Exec(
+		fmt.Sprintf(`UPDATE news_feedback_log SET processed = 1 WHERE id IN (%s)`, strings.Join(placeholders, ",")),
+		args...,
+	)
+	return err
 }

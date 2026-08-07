@@ -1,13 +1,16 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { Search, RefreshCw, LogIn, LogOut, Plus, X, TrendingUp, Star, User as UserIcon, Lock, CheckCircle } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
-import { api, type TRLatestGroup, type TRNewsItem, type Digest, type KeywordMatchGroup } from './api'
+import { api, type TRLatestGroup, type TRNewsItem, type Digest, type KeywordMatchGroupEx, type ScoredNewsItem } from './api'
+import { ChatPanel } from './components/ChatPanel'
+import { FeedbackButtons } from './components/FeedbackButtons'
+import { usePreferences } from './usePreferences'
 import { useLocalKeywords, matchesKeyword } from './useLocalKeywords'
 import { useServerKeywords } from './useServerKeywords'
 import { useCountdown } from './useCountdown'
 import { useAuth } from './useAuth'
 
-const COUNTDOWN_SEC = 180
+const COUNTDOWN_SEC = 15
 
 export default function NewsApp() {
   const [groups, setGroups] = useState<TRLatestGroup[]>([])
@@ -23,7 +26,7 @@ export default function NewsApp() {
   const [activeTab, setActiveTab] = useState<'hot' | 'subscription'>('hot')
 
   // Subscription tab state
-  const [matchedGroups, setMatchedGroups] = useState<KeywordMatchGroup[]>([])
+  const [matchedGroups, setMatchedGroups] = useState<KeywordMatchGroupEx[]>([])
   const [matchedLoading, setMatchedLoading] = useState(false)
   const [matchedError, setMatchedError] = useState<string | null>(null)
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null)
@@ -322,7 +325,7 @@ function SubscriptionTab({
   onAdd: (kw: string) => void
   onRemove: (kw: string) => void
   countdown: ReturnType<typeof useCountdown>
-  matchedGroups: KeywordMatchGroup[]
+  matchedGroups: KeywordMatchGroupEx[]
   matchedLoading: boolean
   matchedError: string | null
   lastRefreshedAt: Date | null
@@ -330,6 +333,11 @@ function SubscriptionTab({
   onLoginClick: () => void
 }) {
   const [input, setInput] = useState('')
+  const preferences = usePreferences(user?.token ?? null)
+
+  const handlePreferenceUpdated = () => {
+    preferences.refetch()
+  }
 
   const handleAdd = () => {
     if (input.trim()) {
@@ -409,6 +417,20 @@ function SubscriptionTab({
         )}
       </div>
 
+      {/* Global preference summary */}
+      {user && preferences.preferences && (
+        <GlobalPreferenceSummary prefs={preferences.preferences.global} />
+      )}
+
+      {/* Preference chat */}
+      {user && (
+        <ChatPanel
+          token={user.token}
+          keywords={keywords}
+          onPreferenceUpdated={handlePreferenceUpdated}
+        />
+      )}
+
       {/* Countdown Bar */}
       {keywords.length > 0 && (
         <div className="p-3 rounded-lg bg-card border border-border">
@@ -467,7 +489,12 @@ function SubscriptionTab({
               {group.items.length > 0 ? (
                 <div className="space-y-2">
                   {group.items.map((it) => (
-                    <NewsItemCard key={`sub-${group.keyword}-${it.platformId}-${it.id}`} item={it} highlighted />
+                    <ScoredNewsItemCard
+                      key={`sub-${group.keyword}-${it.platformId}-${it.id}`}
+                      item={it}
+                      keyword={group.keyword}
+                      token={user?.token}
+                    />
                   ))}
                 </div>
               ) : (
@@ -609,6 +636,104 @@ function PlatformTab({ label, active, onClick }: { label: string; active: boolea
     >
       {label}
     </button>
+  )
+}
+
+function GlobalPreferenceSummary({ prefs }: { prefs: { interests: string[]; dislikes: string[]; preferredAngles: string[]; notes: string } }) {
+  const total = prefs.interests.length + prefs.dislikes.length + prefs.preferredAngles.length + (prefs.notes ? 1 : 0)
+  if (total === 0) {
+    return (
+      <div className="p-3 rounded-lg bg-card border border-border">
+        <p className="text-xs text-muted-foreground">
+          还没有设置阅读偏好。展开下方“偏好助手”告诉我想看什么、不想看什么。
+        </p>
+      </div>
+    )
+  }
+  return (
+    <div className="p-3 rounded-lg bg-card border border-border space-y-1.5">
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-medium text-foreground">当前阅读偏好</span>
+        <span className="text-xs text-muted-foreground">会影响排序和日报</span>
+      </div>
+      {prefs.interests.length > 0 && (
+        <div className="text-xs">
+          <span className="text-primary">感兴趣：</span>
+          <span className="text-foreground">{prefs.interests.join('、')}</span>
+        </div>
+      )}
+      {prefs.dislikes.length > 0 && (
+        <div className="text-xs">
+          <span className="text-destructive">不感兴趣：</span>
+          <span className="text-foreground">{prefs.dislikes.join('、')}</span>
+        </div>
+      )}
+      {prefs.preferredAngles.length > 0 && (
+        <div className="text-xs">
+          <span className="text-muted-foreground">偏好角度：</span>
+          <span className="text-foreground">{prefs.preferredAngles.join('、')}</span>
+        </div>
+      )}
+      {prefs.notes && (
+        <div className="text-xs">
+          <span className="text-muted-foreground">备注：</span>
+          <span className="text-foreground">{prefs.notes}</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ScoredNewsItemCard({
+  item,
+  keyword,
+  token,
+}: {
+  item: ScoredNewsItem
+  keyword: string
+  token?: string
+}) {
+  const scoreLabel =
+    item.relevanceScore >= 4 ? '高度相关' :
+    item.relevanceScore >= 2 ? '相关' :
+    item.relevanceScore > 0 ? '可能相关' :
+    item.relevanceScore < 0 ? '已降权' : '一般'
+
+  return (
+    <a
+      href={item.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="block p-3 rounded-lg border transition hover:border-primary/40 bg-primary/5 border-primary/30"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm text-foreground line-clamp-2">{item.title}</p>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs text-muted-foreground">
+            <span>{item.platformName}</span>
+            <span>排名 {item.rank}</span>
+            <span>热度 {item.crawlCount}</span>
+            <span className={`font-medium ${item.relevanceScore >= 4 ? 'text-primary' : item.relevanceScore < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
+              {scoreLabel}
+            </span>
+            {item.matchedInterests && item.matchedInterests.length > 0 && (
+              <span className="text-primary">
+                命中偏好：{item.matchedInterests.join('、')}
+              </span>
+            )}
+            {token && (
+              <FeedbackButtons
+                token={token}
+                newsItemId={`${item.platformId}-${item.id}`}
+                newsItemTitle={item.title}
+                keyword={keyword}
+              />
+            )}
+          </div>
+        </div>
+        <Star size={14} className="text-primary shrink-0 mt-0.5" />
+      </div>
+    </a>
   )
 }
 

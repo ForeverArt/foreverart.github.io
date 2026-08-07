@@ -50,6 +50,57 @@ export interface KeywordMatchGroup {
   items: TRNewsItem[]
 }
 
+export interface ScoredNewsItem extends TRNewsItem {
+  relevanceScore: number
+  matchedInterests?: string[]
+}
+
+export interface KeywordMatchGroupEx {
+  keyword: string
+  items: ScoredNewsItem[]
+}
+
+export interface PreferenceDoc {
+  interests: string[]
+  dislikes: string[]
+  preferredAngles: string[]
+  notes: string
+}
+
+export interface AllPreferences {
+  global: PreferenceDoc
+  keywords: Record<string, PreferenceDoc>
+}
+
+export interface ChatMessageItem {
+  id: number
+  role: 'user' | 'assistant'
+  content: string
+  createdAt: string
+}
+
+export interface ChatResponse {
+  conversationId: number
+  assistantMessage: string
+  updatedPreferences?: PreferenceDoc
+  preferenceKeyword: string
+}
+
+export interface ConversationItem {
+  id: number
+  keyword: string
+  createdAt: string
+  updatedAt: string
+  messageCount: number
+}
+
+export interface FeedbackRequest {
+  newsItemId: string
+  newsItemTitle: string
+  keyword: string
+  feedbackType: 'more_like_this' | 'not_interested'
+}
+
 async function fetchJSON<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BACKEND_BASE}${path}`, init)
   if (!res.ok) {
@@ -132,7 +183,39 @@ export const api = {
     }),
 
   matchedItems: (token: string) =>
-    fetchJSON<KeywordMatchGroup[]>('/api/v1/news/me/matched', {
+    fetchJSON<KeywordMatchGroupEx[]>('/api/v1/news/me/matched', {
       headers: authHeaders(token),
+    }),
+
+  preferences: (token: string) =>
+    fetchJSON<AllPreferences>('/api/v1/news/me/preferences', {
+      headers: authHeaders(token),
+    }),
+
+  chat: (token: string, keyword: string, message: string, conversationId?: number) =>
+    fetchJSON<ChatResponse>('/api/v1/news/me/chat', {
+      method: 'POST',
+      headers: authHeaders(token),
+      body: JSON.stringify({ keyword, message, conversationId }),
+    }),
+
+  conversations: (token: string, keyword?: string) => {
+    const qs = new URLSearchParams()
+    if (keyword) qs.set('keyword', keyword)
+    return fetchJSON<ConversationItem[]>(`/api/v1/news/me/conversations?${qs}`, {
+      headers: authHeaders(token),
+    })
+  },
+
+  conversationMessages: (token: string, conversationId: number) =>
+    fetchJSON<ChatMessageItem[]>(`/api/v1/news/me/conversations/${conversationId}/messages`, {
+      headers: authHeaders(token),
+    }),
+
+  feedback: (token: string, req: FeedbackRequest) =>
+    fetchJSON<{ success: boolean }>('/api/v1/news/me/feedback', {
+      method: 'POST',
+      headers: authHeaders(token),
+      body: JSON.stringify(req),
     }),
 }
